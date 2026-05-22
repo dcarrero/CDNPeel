@@ -9,6 +9,8 @@ declare(strict_types=1);
  * que es exactamente la técnica que CF-Hero implementa a mano en Go.
  */
 
+require_once __DIR__ . '/ip-safety.php';
+
 const BACKCF_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/113.0';
 
 function extract_title(string $html): ?string
@@ -43,15 +45,20 @@ function titles_match(?string $a, ?string $b): bool
 }
 
 /**
- * Petición HTTPS directa al dominio (sin override de IP).
- * Devuelve title y código HTTP del recurso público (a través de CF si aplica).
+ * Petición HTTPS directa al dominio. Si se pasan $resolveIps (IPs ya validadas
+ * como seguras por ip_is_safe_target), se usa CURLOPT_RESOLVE para forzar la
+ * conexión a esas IPs y blindar el baseline frente a DNS rebinding (el resolver
+ * del sistema podría dar IPs internas distintas de las que devolvió DoH).
  */
-function fetch_title_direct(string $domain, int $timeout = 8): array
+function fetch_title_direct(string $domain, array $resolveIps = [], int $timeout = 8): array
 {
+    // Si recibimos lista de IPs, descartamos cualquier insegura por defensa en profundidad.
+    $resolveIps = ip_filter_safe($resolveIps);
+
     $url = 'https://' . $domain . '/';
     $headerBlob = '';
     $ch = curl_init($url);
-    curl_setopt_array($ch, [
+    $opts = [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_MAXREDIRS => 3,
@@ -64,7 +71,18 @@ function fetch_title_direct(string $domain, int $timeout = 8): array
             $headerBlob .= $header;
             return strlen($header);
         },
-    ]);
+    ];
+    if (!empty($resolveIps)) {
+        $resolve = [];
+        foreach ($resolveIps as $ip) {
+            $isV6 = filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false;
+            $host = $isV6 ? "[$ip]" : $ip;
+            $resolve[] = "$domain:443:$host";
+            $resolve[] = "$domain:80:$host";
+        }
+        $opts[CURLOPT_RESOLVE] = $resolve;
+    }
+    curl_setopt_array($ch, $opts);
     $body = curl_exec($ch);
     $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
     $err = curl_error($ch);
@@ -91,6 +109,9 @@ function fetch_title_direct(string $domain, int $timeout = 8): array
  */
 function fetch_title_via_ip(string $domain, string $ip, int $timeout = 6): array
 {
+    if (!ip_is_safe_target($ip)) {
+        return ['ok' => false, 'scheme' => null, 'status' => 0, 'title' => null, 'error' => 'blocked: unsafe target IP'];
+    }
     $isV6 = filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false;
     $resolveHost = $isV6 ? "[$ip]" : $ip;
 
@@ -149,6 +170,17 @@ function fetch_title_via_ip(string $domain, string $ip, int $timeout = 6): array
 function fetch_titles_via_ips_multi(string $domain, array $ips, callable $onResult, int $concurrency = 12, int $timeout = 5): void
 {
     $ips = array_values(array_unique($ips));
+    // Defensa en profundidad: aunque scan.php filtra en $mark(), nunca disparamos
+    // cURL contra una IP no apta. Las inseguras se entregan como error y siguen.
+    $safeIps = [];
+    foreach ($ips as $ip) {
+        if (ip_is_safe_target($ip)) {
+            $safeIps[] = $ip;
+        } else {
+            $onResult($ip, ['ok' => false, 'scheme' => null, 'status' => 0, 'title' => null, 'error' => 'blocked: unsafe target IP']);
+        }
+    }
+    $ips = $safeIps;
     if (empty($ips)) return;
 
     $multi = curl_multi_init();

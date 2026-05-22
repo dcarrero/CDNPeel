@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 
+require __DIR__ . '/lib/ip-safety.php';
 require __DIR__ . '/lib/dns.php';
 require __DIR__ . '/lib/cdn-ranges.php';
 require __DIR__ . '/lib/extractor.php';
@@ -51,8 +52,18 @@ emit('start', 'info', "Scanning $domain", ['domain' => $domain]);
 
 // 1) Registros A
 emit('resolve_a', 'running', 'Resolving A records via DoH');
-$aIps = dns_get_a($domain);
-emit('resolve_a', 'done', count($aIps) . ' A record(s)', ['ips' => $aIps]);
+$aIpsRaw = dns_get_a($domain);
+$aIps = ip_filter_safe($aIpsRaw);
+$unsafeA = array_values(array_diff($aIpsRaw, $aIps));
+if (!empty($unsafeA) && empty($aIps)) {
+    // El dominio apunta exclusivamente a rangos privados/loopback/metadata:
+    // un atacante está intentando convertir el servidor en proxy SSRF.
+    fail('Domain resolves only to private/reserved IP ranges — refusing to scan');
+}
+emit('resolve_a', 'done',
+    count($aIps) . ' A record(s)' . (empty($unsafeA) ? '' : ' (' . count($unsafeA) . ' unsafe filtered)'),
+    ['ips' => $aIps, 'filtered_unsafe' => $unsafeA]
+);
 
 // 2) Clasificación multi-CDN
 emit('classify_cdn', 'running', 'Comparing against known CDN ranges');
@@ -191,9 +202,11 @@ if ($censysId !== '' && $censysSecret !== '') {
     emit('osint_censys', 'skipped', 'No Censys credentials provided');
 }
 
-// 6) Baseline title (a través del CDN si aplica) + detección por headers
+// 6) Baseline title (a través del CDN si aplica) + detección por headers.
+//     Forzamos CURLOPT_RESOLVE a las IPs A ya validadas para evitar DNS rebinding
+//     (resolver del sistema podría devolver IPs internas distintas a las de DoH).
 emit('fetch_baseline', 'running', "Fetching baseline title for $domain");
-$baseline = fetch_title_direct($domain);
+$baseline = fetch_title_direct($domain, $aIps);
 $headerProviders = [];
 if (!$baseline['ok']) {
     emit('fetch_baseline', 'error', $baseline['error'] ?: 'baseline failed');
@@ -218,6 +231,9 @@ $behindCdn = !empty($detectedProviders);
 $candidates = [];
 $mark = function (string $ip, string $source, ?string $note = null) use (&$candidates) {
     if (!filter_var($ip, FILTER_VALIDATE_IP)) return;
+    // Bloqueo central de SSRF: rangos privados, loopback, link-local (incluida
+    // metadata cloud 169.254.169.254), CGNAT, multicast, reservados y v6 análogos.
+    if (!ip_is_safe_target($ip)) return;
     if (is_cloudflare_ip($ip)) return; // descartamos CF
     if (!isset($candidates[$ip])) $candidates[$ip] = ['ip' => $ip, 'sources' => [], 'notes' => []];
     if (!in_array($source, $candidates[$ip]['sources'], true)) {
