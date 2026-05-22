@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/curl-safe.php';
+
 /**
  * Resolución DNS vía DNS-over-HTTPS (Cloudflare 1.1.1.1).
  * No depende del resolver del sistema y evita interferencias locales.
@@ -25,11 +27,12 @@ function dns_doh_query(string $name, string $type = 'A', int $timeout = 5): arra
     ]);
 
     $body = curl_exec($ch);
+    $errno = curl_errno($ch);
     $err = curl_error($ch);
     unset($ch);
 
     if ($body === false) {
-        return ['ok' => false, 'error' => $err ?: 'DoH request failed', 'records' => []];
+        return ['ok' => false, 'error' => safe_curl_error($errno, $err) ?: 'DoH request failed', 'records' => []];
     }
 
     $json = json_decode($body, true);

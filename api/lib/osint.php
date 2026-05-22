@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/curl-safe.php';
+
 /**
  * Integraciones opcionales con buscadores de internet.
  * Las API keys vienen por request; nunca se persisten en servidor.
@@ -24,10 +26,11 @@ function http_json_get(string $url, array $headers = [], int $timeout = 10, ?str
     }
     $body = curl_exec($ch);
     $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    $errno = curl_errno($ch);
     $err = curl_error($ch);
     unset($ch);
 
-    if ($body === false) return ['ok' => false, 'status' => 0, 'error' => $err, 'json' => null];
+    if ($body === false) return ['ok' => false, 'status' => 0, 'error' => safe_curl_error($errno, $err), 'json' => null];
     $json = json_decode($body, true);
     return ['ok' => $code >= 200 && $code < 300, 'status' => $code, 'error' => $code >= 400 ? "HTTP $code" : null, 'json' => $json];
 }

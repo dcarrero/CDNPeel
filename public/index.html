@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; connect-src 'self'; script-src 'self'; style-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'">
+<meta name="referrer" content="no-referrer">
 <title>CDNPeel — Peel back the CDN to find the origin IP</title>
 <link rel="stylesheet" href="style.css">
 </head>
@@ -11,7 +13,7 @@
   <div class="brand">
     <span class="dot"></span>
     <h1 data-i18n="app.name">CDNPeel</h1>
-    <span class="tag" data-i18n="app.version">v1.5.0</span>
+    <span class="tag" data-i18n="app.version">v1.6.0</span>
     <select id="lang-picker" class="lang-picker" aria-label="Language">
       <option value="en">English</option>
       <option value="es">Español</option>

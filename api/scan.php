@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require __DIR__ . '/lib/ip-safety.php';
+require __DIR__ . '/lib/ratelimit.php';
 require __DIR__ . '/lib/dns.php';
 require __DIR__ . '/lib/cdn-ranges.php';
 require __DIR__ . '/lib/extractor.php';
@@ -16,6 +17,9 @@ header('Content-Type: text/event-stream; charset=utf-8');
 header('Cache-Control: no-cache, no-transform');
 header('Connection: keep-alive');
 header('X-Accel-Buffering: no'); // nginx: desactivar buffering
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: DENY');
+header('Referrer-Policy: no-referrer');
 
 while (ob_get_level() > 0) { ob_end_flush(); }
 @ob_implicit_flush(true);
@@ -41,6 +45,22 @@ $domain = rtrim($domain, '/');
 if ($domain === '' || !filter_var($domain, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)) {
     fail('Invalid domain');
 }
+
+// Rate-limit por IP. El SSE ya está abierto, así que devolvemos el motivo
+// como evento SSE (id=fatal) en vez de HTTP 429: EventSource no expone el
+// status code y, de este modo, el cliente puede mostrar un mensaje útil.
+$rl = rl_check(rl_client_ip());
+if (!$rl['ok']) {
+    rl_audit('rate_limited', ['domain' => $domain, 'retry_after' => $rl['retry_after']]);
+    emit('fatal', 'error',
+        'Rate limit exceeded: try again in ' . $rl['retry_after'] . 's',
+        ['retry_after' => $rl['retry_after'], 'limit' => $rl['limit']]
+    );
+    exit;
+}
+
+// Audit trail mínimo (A09). No registramos keys ni cuerpos, solo IP y dominio.
+rl_audit('scan_start', ['domain' => $domain]);
 
 // Las API keys nunca viajan por la URL (quedarían en access logs). El cliente
 // las envía por POST a init.php, que devuelve un scan_id one-shot. Aquí

@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/curl-safe.php';
+
 /**
  * Fuentes de OSINT gratuitas y sin API key.
  *
@@ -111,6 +113,7 @@ function crtsh_subdomains(string $domain, int $timeout = 18, int $max = FOSINT_M
         ]);
         $body = curl_exec($ch);
         $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        $errno = curl_errno($ch);
         $err = curl_error($ch);
         unset($ch);
         if ($body !== false && $code === 200) break;
@@ -118,7 +121,8 @@ function crtsh_subdomains(string $domain, int $timeout = 18, int $max = FOSINT_M
     }
 
     if ($body === false || $code !== 200) {
-        return ['ok' => false, 'subdomains' => [], 'error' => $err ?: "HTTP $code (crt.sh suele estar inestable)"];
+        $safe = safe_curl_error($errno, $err);
+        return ['ok' => false, 'subdomains' => [], 'error' => $safe ?: "HTTP $code (crt.sh suele estar inestable)"];
     }
 
     // crt.sh a veces devuelve JSON inválido cuando hay miles de filas;
@@ -179,12 +183,14 @@ function otx_passive_dns(string $domain, ?string $key = null, int $timeout = 12)
         CURLOPT_USERAGENT => FOSINT_UA,
     ]);
     $body = curl_exec($ch);
+    $errno = curl_errno($ch);
     $err = curl_error($ch);
     $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
     unset($ch);
 
     if ($body === false || $code !== 200) {
-        return ['ok' => false, 'ips' => [], 'records' => [], 'error' => $err ?: "HTTP $code"];
+        $safe = safe_curl_error($errno, $err);
+        return ['ok' => false, 'ips' => [], 'records' => [], 'error' => $safe ?: "HTTP $code"];
     }
     $json = json_decode($body, true);
     if (!is_array($json)) {
@@ -226,12 +232,14 @@ function hackertarget_hostsearch(string $domain, int $timeout = 10): array
         CURLOPT_USERAGENT => FOSINT_UA,
     ]);
     $body = curl_exec($ch);
+    $errno = curl_errno($ch);
     $err = curl_error($ch);
     $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
     unset($ch);
 
     if ($body === false || $code !== 200) {
-        return ['ok' => false, 'pairs' => [], 'ips' => [], 'error' => $err ?: "HTTP $code"];
+        $safe = safe_curl_error($errno, $err);
+        return ['ok' => false, 'pairs' => [], 'ips' => [], 'error' => $safe ?: "HTTP $code"];
     }
     $body = trim($body);
 
@@ -276,10 +284,11 @@ function shodan_internetdb(string $ip, int $timeout = 4): array
     ]);
     $body = curl_exec($ch);
     $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    $errno = curl_errno($ch);
     $err = curl_error($ch);
     unset($ch);
 
-    if ($body === false) return ['ok' => false, 'data' => null, 'error' => $err ?: 'request failed'];
+    if ($body === false) return ['ok' => false, 'data' => null, 'error' => safe_curl_error($errno, $err) ?: 'request failed'];
     if ($code === 404) return ['ok' => true, 'data' => null, 'error' => null]; // sin info
     if ($code !== 200) return ['ok' => false, 'data' => null, 'error' => "HTTP $code"];
 

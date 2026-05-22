@@ -10,6 +10,7 @@ declare(strict_types=1);
  */
 
 require_once __DIR__ . '/ip-safety.php';
+require_once __DIR__ . '/curl-safe.php';
 
 const BACKCF_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/113.0';
 
@@ -85,11 +86,12 @@ function fetch_title_direct(string $domain, array $resolveIps = [], int $timeout
     curl_setopt_array($ch, $opts);
     $body = curl_exec($ch);
     $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    $errno = curl_errno($ch);
     $err = curl_error($ch);
     unset($ch);
 
     if ($body === false) {
-        return ['ok' => false, 'error' => $err ?: 'request failed', 'status' => 0, 'title' => null, 'headers' => ''];
+        return ['ok' => false, 'error' => safe_curl_error($errno, $err) ?: 'request failed', 'status' => 0, 'title' => null, 'headers' => ''];
     }
     return [
         'ok' => true,
@@ -154,7 +156,7 @@ function fetch_title_via_ip(string $domain, string $ip, int $timeout = 6): array
                 'scheme' => $scheme,
                 'status' => $code,
                 'title' => null,
-                'error' => $err ?: 'request failed',
+                'error' => safe_curl_error($errno, $err) ?: 'request failed',
             ];
         }
     }
@@ -257,7 +259,7 @@ function fetch_titles_via_ips_multi(string $domain, array $ips, callable $onResu
                     'scheme' => $scheme,
                     'status' => $code,
                     'title' => null,
-                    'error' => $err ?: 'unreachable',
+                    'error' => safe_curl_error($errno, $err) ?: 'unreachable',
                 ]);
             }
 

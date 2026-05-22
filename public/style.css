@@ -458,6 +458,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 #results-table td.idb .idb-line strong { color: var(--text); font-weight: 500; }
 #results-table td.idb .idb-vulns { color: var(--err); }
 
+#results-table td.results-empty { text-align: center; color: var(--text-dim); }
 #results-table tr.origin_ip { background: rgba(46, 160, 67, 0.07); }
 #results-table tr.origin_ip td.verdict { color: var(--ok); font-weight: 600; }
 #results-table tr.no_match td.verdict { color: var(--warn); }

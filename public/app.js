@@ -345,8 +345,7 @@
       const tr = document.createElement('tr');
       const td = document.createElement('td');
       td.colSpan = 6;
-      td.style.textAlign = 'center';
-      td.style.color = 'var(--text-dim)';
+      td.className = 'results-empty';
       td.textContent = t('results.empty');
       tr.appendChild(td);
       resultsTbody.appendChild(tr);
@@ -447,6 +446,11 @@
           stop();
         }
         if (payload.id === 'fatal') {
+          // Hacer visible el motivo en la sección Pipeline: el evento ya se
+          // renderiza, pero el step "fatal" no estaba en el i18n de steps —
+          // sobreescribimos el title con el mensaje para que el usuario lo vea.
+          const el = document.getElementById('step-fatal');
+          if (el) el.open = true;
           stop();
         }
       } catch (err) {

@@ -3,7 +3,7 @@
 > **Peel back the CDN to find the origin IP.**
 > A minimalist, dependency-free web tool that discovers the real origin IP address of websites protected by Cloudflare, Fastly, Akamai, AWS CloudFront, Imperva, Sucuri, BunnyCDN, KeyCDN, CDN77, StackPath, Google Cloud Front-end, Azure Front Door and TransparentEdge.
 
-[![Version](https://img.shields.io/badge/version-1.5.0-orange.svg)](#)
+[![Version](https://img.shields.io/badge/version-1.6.0-orange.svg)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](#license)
 [![PHP](https://img.shields.io/badge/PHP-8.0%2B-blue.svg)](#)
 
@@ -200,6 +200,44 @@ location /api/ {
 Notes:
 - **`fastcgi_buffering off`** is required so SSE events reach the browser in real time. CDNPeel also sends `X-Accel-Buffering: no`.
 - Outbound HTTPS access from the server is required (DoH, crt.sh, InternetDB, and the validation probes themselves).
+
+### Recommended HTTP security headers (production)
+
+The PHP endpoints (`api/scan.php`, `api/init.php`) already emit
+`X-Content-Type-Options`, `X-Frame-Options` and `Referrer-Policy`, and
+`public/index.html` ships a Content-Security-Policy via `<meta>`. For
+defence-in-depth, set the same headers at the web-server level so they
+also cover the static assets.
+
+**nginx:**
+
+```nginx
+add_header Content-Security-Policy "default-src 'self'; img-src 'self' data:; connect-src 'self'; script-src 'self'; style-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header X-Frame-Options "DENY" always;
+add_header Referrer-Policy "no-referrer" always;
+```
+
+**Apache:**
+
+```apache
+Header always set Content-Security-Policy "default-src 'self'; img-src 'self' data:; connect-src 'self'; script-src 'self'; style-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+Header always set X-Content-Type-Options "nosniff"
+Header always set X-Frame-Options "DENY"
+Header always set Referrer-Policy "no-referrer"
+```
+
+### Rate limiting
+
+`api/scan.php` enforces 30 scans/hour per `REMOTE_ADDR` by default. When
+deployed behind a trusted reverse proxy, configure the proxy to rewrite
+the client IP (`set_real_ip_from` / `mod_remoteip`) before requests reach
+PHP, otherwise every client appears as the proxy and shares a single
+bucket. Override the default by editing `RL_DEFAULT_LIMIT` in
+`api/lib/ratelimit.php`.
+
+A minimal audit trail (`scan_start` and `rate_limited` events, with IP and
+domain — no keys) is written to `error_log` for compliance with OWASP A09.
 
 ## Security and legal
 
