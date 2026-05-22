@@ -241,7 +241,7 @@ CDNPeel is a port of the ideas in **[CF-Hero](https://github.com/musana/CF-Hero)
 MIT — see [LICENSE](LICENSE) file.
 
 ```
-Copyright (c) 2026 Color Vivo Internet, David Carrero Hernandez
+Copyright (c) 2026 Color Vivo Internet, David Carrero Fernández-Baillo
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
