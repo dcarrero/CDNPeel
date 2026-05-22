@@ -42,10 +42,39 @@ if ($domain === '' || !filter_var($domain, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_H
     fail('Invalid domain');
 }
 
-$shodanKey = trim((string)($_GET['shodan_key'] ?? ''));
-$censysId = trim((string)($_GET['censys_id'] ?? ''));
-$censysSecret = trim((string)($_GET['censys_secret'] ?? ''));
-$otxKey = trim((string)($_GET['otx_key'] ?? ''));
+// Las API keys nunca viajan por la URL (quedarían en access logs). El cliente
+// las envía por POST a init.php, que devuelve un scan_id one-shot. Aquí
+// consumimos ese archivo y lo borramos inmediatamente.
+$shodanKey = '';
+$censysId = '';
+$censysSecret = '';
+$otxKey = '';
+
+$scanId = trim((string)($_GET['scan_id'] ?? ''));
+if ($scanId !== '') {
+    if (!preg_match('/^[a-f0-9]{32}$/', $scanId)) {
+        fail('Invalid scan_id format');
+    }
+    $tokenFile = sys_get_temp_dir() . '/cdnpeel-scans/' . $scanId . '.json';
+    if (!is_file($tokenFile)) {
+        fail('Unknown or expired scan_id');
+    }
+    // Expiración: 120 s desde la creación del archivo.
+    if (filemtime($tokenFile) < time() - 120) {
+        @unlink($tokenFile);
+        fail('Expired scan_id');
+    }
+    $ctx = json_decode((string)file_get_contents($tokenFile), true);
+    // One-shot: borramos antes de usarlo para que un reintento no reaproveche.
+    @unlink($tokenFile);
+    if (is_array($ctx)) {
+        $shodanKey    = isset($ctx['shodan_key'])    ? trim((string)$ctx['shodan_key'])    : '';
+        $censysId     = isset($ctx['censys_id'])     ? trim((string)$ctx['censys_id'])     : '';
+        $censysSecret = isset($ctx['censys_secret']) ? trim((string)$ctx['censys_secret']) : '';
+        $otxKey       = isset($ctx['otx_key'])       ? trim((string)$ctx['otx_key'])       : '';
+    }
+}
+
 $useHackerTarget = ($_GET['use_hackertarget'] ?? '') === '1';
 
 emit('start', 'info', "Scanning $domain", ['domain' => $domain]);

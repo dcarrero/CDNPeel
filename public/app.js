@@ -305,7 +305,28 @@
     stopBtn.hidden = true;
   }
 
-  form.addEventListener('submit', (e) => {
+  async function obtainScanId() {
+    // Las API keys NO viajan por la URL: las envío por POST a init.php y
+    // recibo un scan_id one-shot que el SSE consume y borra.
+    const body = {};
+    let anyKey = false;
+    for (const id of KEY_FIELDS) {
+      const v = document.getElementById(id).value.trim();
+      if (v) { body[id] = v; anyKey = true; }
+    }
+    if (!anyKey) return null;
+
+    const res = await fetch('../api/init.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error('init failed: HTTP ' + res.status);
+    const data = await res.json();
+    return data.scan_id || null;
+  }
+
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (es) return;
 
@@ -313,18 +334,28 @@
     const domain = $('#domain').value.trim();
     if (!domain) return;
 
-    const params = new URLSearchParams({ domain });
-    for (const id of KEY_FIELDS) {
-      const v = document.getElementById(id).value.trim();
-      if (v) params.set(id, v);
-    }
-    for (const id of CHECKBOXES) {
-      if (document.getElementById(id).checked) params.set(id, '1');
-    }
-
     runBtn.disabled = true;
     runBtn.textContent = t('buttons.scanning');
     stopBtn.hidden = false;
+
+    let scanId = null;
+    try {
+      scanId = await obtainScanId();
+    } catch (err) {
+      const el = getStepEl('connection');
+      el.className = 'step error';
+      el.querySelector('.status').textContent = 'error';
+      el.querySelector('.title').textContent = t('steps.connection');
+      el.querySelector('.msg').textContent = String(err && err.message ? err.message : err);
+      stop();
+      return;
+    }
+
+    const params = new URLSearchParams({ domain });
+    if (scanId) params.set('scan_id', scanId);
+    for (const id of CHECKBOXES) {
+      if (document.getElementById(id).checked) params.set(id, '1');
+    }
 
     es = new EventSource('../api/scan.php?' + params.toString());
     es.addEventListener('step', (ev) => {
