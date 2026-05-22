@@ -1,0 +1,36 @@
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors / IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.history/
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+/tmp/
+
+# PHP — in case anyone adds Composer later
+/vendor/
+composer.lock
+.phpunit.result.cache
+
+# Environment / local config
+.env
+.env.local
+config.local.php
+
+# Build / dependency caches if anyone ever wires bundlers
+node_modules/
+dist/
+.cache/
+
+# Local CDN range overrides (if added in the future)
+/api/data/*.json

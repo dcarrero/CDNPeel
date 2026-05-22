@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CDNPeel — Peel back the CDN to find the origin IP</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="dot"></span>
+    <h1 data-i18n="app.name">CDNPeel</h1>
+    <span class="tag" data-i18n="app.version">v1.0</span>
+    <select id="lang-picker" class="lang-picker" aria-label="Language">
+      <option value="en">English</option>
+      <option value="es">Español</option>
+      <option value="fr">Français</option>
+      <option value="de">Deutsch</option>
+      <option value="it">Italiano</option>
+      <option value="pt">Português</option>
+      <option value="ja">日本語</option>
+      <option value="ko">한국어</option>
+    </select>
+  </div>
+  <p class="subtitle" data-i18n-html="app.subtitle_html"></p>
+</header>
+
+<main>
+  <section class="card form">
+    <form id="scan-form" autocomplete="off">
+      <label class="field">
+        <span data-i18n="form.domain_label">Target domain</span>
+        <input id="domain" name="domain" type="text" data-i18n-placeholder="form.domain_placeholder" required spellcheck="false">
+      </label>
+
+      <details class="extras" open>
+        <summary data-i18n="form.free_sources_title">Free additional sources (optional)</summary>
+        <label class="check">
+          <input id="use_hackertarget" type="checkbox">
+          <span>
+            <span data-i18n="form.hackertarget_label">HackerTarget hostsearch</span>
+            <em data-i18n="form.hackertarget_hint"></em>
+          </span>
+        </label>
+        <div class="grid">
+          <label class="field">
+            <span>
+              <span data-i18n="form.otx_label">OTX API key</span>
+              <em data-i18n-html="form.otx_hint_html"></em>
+            </span>
+            <input id="otx_key" type="password" autocomplete="off" spellcheck="false">
+          </label>
+        </div>
+        <p class="hint" data-i18n="form.free_sources_note"></p>
+      </details>
+
+      <details class="extras">
+        <summary data-i18n="form.paid_keys_title">Paid API keys (Shodan / Censys)</summary>
+        <div class="grid">
+          <label class="field">
+            <span data-i18n="form.shodan_label">Shodan API key</span>
+            <input id="shodan_key" type="password" autocomplete="off" spellcheck="false">
+          </label>
+          <label class="field">
+            <span data-i18n="form.censys_id_label">Censys API ID</span>
+            <input id="censys_id" type="text" autocomplete="off" spellcheck="false">
+          </label>
+          <label class="field">
+            <span data-i18n="form.censys_secret_label">Censys API secret</span>
+            <input id="censys_secret" type="password" autocomplete="off" spellcheck="false">
+          </label>
+        </div>
+        <p class="hint" data-i18n="form.keys_note"></p>
+      </details>
+
+      <div class="row">
+        <button id="run" type="submit" data-i18n="buttons.scan">Scan</button>
+        <button id="stop" type="button" hidden data-i18n="buttons.stop">Stop</button>
+      </div>
+    </form>
+
+    <p class="legal" data-i18n="legal"></p>
+  </section>
+
+  <section id="pipeline" class="pipeline" aria-live="polite"></section>
+
+  <section id="results" class="card results" hidden>
+    <h2 data-i18n="results.title">Results</h2>
+    <div id="summary-meta" class="meta"></div>
+    <table id="results-table">
+      <colgroup>
+        <col class="col-ip">
+        <col class="col-source">
+        <col class="col-verdict">
+        <col class="col-status">
+        <col class="col-title">
+        <col class="col-idb">
+      </colgroup>
+      <thead>
+        <tr>
+          <th data-i18n="results.col_ip">IP</th>
+          <th data-i18n="results.col_source">Source</th>
+          <th data-i18n="results.col_verdict">Verdict</th>
+          <th data-i18n="results.col_status">HTTP</th>
+          <th data-i18n="results.col_title">Title</th>
+          <th data-i18n="results.col_idb">InternetDB</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div class="row">
+      <button id="copy-real" data-i18n="buttons.copy_real">Copy origin IPs</button>
+      <button id="copy-all" data-i18n="buttons.copy_all">Copy all candidates</button>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <small data-i18n-html="footer_html"></small>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
