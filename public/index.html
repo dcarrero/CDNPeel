@@ -11,7 +11,7 @@
   <div class="brand">
     <span class="dot"></span>
     <h1 data-i18n="app.name">CDNPeel</h1>
-    <span class="tag" data-i18n="app.version">v1.0</span>
+    <span class="tag" data-i18n="app.version">v1.5.0</span>
     <select id="lang-picker" class="lang-picker" aria-label="Language">
       <option value="en">English</option>
       <option value="es">Español</option>
@@ -26,8 +26,16 @@
   <p class="subtitle" data-i18n-html="app.subtitle_html"></p>
 </header>
 
+<nav class="quicknav" aria-label="Sections">
+  <div class="quicknav-inner">
+    <a href="#form-section" class="qn-link" data-section="form-section"><span data-i18n="nav.form">Form</span></a>
+    <a href="#pipeline-section" class="qn-link" data-section="pipeline-section"><span data-i18n="nav.pipeline">Progress</span><span id="qn-progress" class="qn-counter" hidden></span></a>
+    <a href="#results" class="qn-link qn-disabled" data-section="results" id="qn-results-link" aria-disabled="true"><span data-i18n="nav.results">Results</span></a>
+  </div>
+</nav>
+
 <main>
-  <section class="card form">
+  <section id="form-section" class="card form">
     <form id="scan-form" autocomplete="off">
       <label class="field">
         <span data-i18n="form.domain_label">Target domain</span>
@@ -83,7 +91,19 @@
     <p class="legal" data-i18n="legal"></p>
   </section>
 
-  <section id="pipeline" class="pipeline" aria-live="polite"></section>
+  <section id="pipeline-section" class="pipeline-section" aria-live="polite">
+    <div class="pipeline-header" id="pipeline-header" hidden>
+      <h2 class="pipeline-title">
+        <span data-i18n="nav.pipeline">Progress</span>
+        <span id="pipeline-counter" class="pipeline-counter"></span>
+      </h2>
+      <div class="pipeline-actions">
+        <button type="button" id="expand-all" class="ghost-btn" data-i18n="nav.expand_all">Expand all</button>
+        <button type="button" id="collapse-all" class="ghost-btn" data-i18n="nav.collapse_all">Collapse all</button>
+      </div>
+    </div>
+    <div id="pipeline" class="pipeline"></div>
+  </section>
 
   <section id="results" class="card results" hidden>
     <h2 data-i18n="results.title">Results</h2>
@@ -119,6 +139,11 @@
 <footer>
   <small data-i18n-html="footer_html"></small>
 </footer>
+
+<button id="to-top" class="to-top" type="button" aria-label="Top" hidden>
+  <span aria-hidden="true">↑</span>
+  <span data-i18n="nav.top">Top</span>
+</button>
 
 <script src="app.js"></script>
 </body>

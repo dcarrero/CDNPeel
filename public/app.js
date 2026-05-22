@@ -3,6 +3,10 @@
 
   const $ = (s) => document.querySelector(s);
   const pipeline = $('#pipeline');
+  const pipelineHeader = $('#pipeline-header');
+  const pipelineCounter = $('#pipeline-counter');
+  const qnProgress = $('#qn-progress');
+  const qnResultsLink = $('#qn-results-link');
   const form = $('#scan-form');
   const runBtn = $('#run');
   const stopBtn = $('#stop');
@@ -10,6 +14,15 @@
   const resultsTbody = $('#results-table tbody');
   const summaryMeta = $('#summary-meta');
   const langPicker = $('#lang-picker');
+  const toTopBtn = $('#to-top');
+  const expandAllBtn = $('#expand-all');
+  const collapseAllBtn = $('#collapse-all');
+
+  // Estados que indican que el paso "ya pasó" y por tanto se puede plegar.
+  const SETTLED_STATUSES = new Set(['done', 'match', 'no-match', 'skipped', 'info']);
+  // Estados que el usuario debe ver: nunca autoplegamos.
+  const STICKY_STATUSES = new Set(['error', 'running']);
+  const AUTOCLOSE_DELAY_MS = 450;
 
   const SUPPORTED_LOCALES = ['en', 'es', 'fr', 'de', 'it', 'pt', 'ja', 'ko'];
   let locale = {};       // active locale dict
@@ -88,6 +101,7 @@
 
   let es = null;
   let candidatesList = [];
+  let activeSection = 'form-section';
 
   function stepLabel(id) {
     const key = 'steps.' + id;
@@ -102,18 +116,31 @@
   function getStepEl(id) {
     let el = document.getElementById('step-' + CSS.escape(id));
     if (!el) {
-      el = document.createElement('div');
+      // Mostrar la cabecera del pipeline en cuanto aparece el primer paso.
+      if (pipelineHeader && pipelineHeader.hidden) pipelineHeader.hidden = false;
+
+      el = document.createElement('details');
       el.id = 'step-' + id;
       el.className = 'step pending';
+      el.open = true; // arrancan abiertos; se autoplegarán cuando se asienten
       el.innerHTML = `
-        <div class="head">
-          <div class="title"></div>
+        <summary>
+          <div class="head-main">
+            <div class="title"></div>
+            <div class="msg"></div>
+          </div>
           <div class="status">pending</div>
-        </div>
-        <div class="msg"></div>
-        <div class="body" hidden></div>
+        </summary>
+        <div class="body"></div>
       `;
       el.querySelector('.title').textContent = stepLabel(id);
+
+      // Marcar como "abierto por usuario" si el primer toggle proviene de un clic.
+      el.addEventListener('toggle', () => {
+        if (el.dataset.userToggled === 'true') return;
+        el.dataset.userToggled = 'true';
+      }, { once: true });
+
       pipeline.appendChild(el);
     }
     return el;
@@ -127,13 +154,57 @@
     el.querySelector('.msg').textContent = message || '';
     const body = el.querySelector('.body');
     const detail = formatBody(id, data);
-    if (detail) {
-      body.textContent = detail;
-      body.hidden = false;
-    } else {
-      body.hidden = true;
+    body.textContent = detail || '';
+
+    // Apertura/cierre automático:
+    //  - running / error → abierto siempre.
+    //  - settled (done/match/no-match/skipped/info) → cerrar tras un breve delay,
+    //    salvo que el usuario lo haya abierto manualmente.
+    if (STICKY_STATUSES.has(status)) {
+      el.open = true;
+    } else if (SETTLED_STATUSES.has(status)) {
+      if (el.dataset.autoCloseTimer) clearTimeout(Number(el.dataset.autoCloseTimer));
+      const timer = setTimeout(() => {
+        if (el.dataset.userToggled !== 'true') el.open = false;
+      }, AUTOCLOSE_DELAY_MS);
+      el.dataset.autoCloseTimer = String(timer);
     }
-    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    updateCounter();
+    maybeScrollIntoView(el);
+  }
+
+  // Hace scrollIntoView SOLO si el paso queda fuera del viewport y el usuario
+  // está actualmente mirando la sección de Pipeline. Evita robar el scroll si
+  // el usuario está leyendo el formulario o los resultados.
+  function maybeScrollIntoView(el) {
+    if (activeSection !== 'pipeline-section') return;
+    const rect = el.getBoundingClientRect();
+    const viewportH = window.innerHeight || document.documentElement.clientHeight;
+    if (rect.top < 60 || rect.bottom > viewportH - 10) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+
+  function updateCounter() {
+    const steps = pipeline.querySelectorAll('.step');
+    const total = steps.length;
+    let settled = 0, errors = 0;
+    steps.forEach((s) => {
+      const cls = s.className;
+      if (cls.includes(' error')) { errors++; settled++; }
+      else if (SETTLED_STATUSES.has(stateOf(cls))) settled++;
+    });
+    const txt = `${settled}/${total}` + (errors ? ` · ${errors} err` : '');
+    pipelineCounter.textContent = txt;
+    qnProgress.hidden = total === 0;
+    qnProgress.textContent = txt;
+    qnProgress.classList.toggle('has-error', errors > 0);
+  }
+
+  function stateOf(className) {
+    const parts = className.split(/\s+/);
+    return parts.find((p) => p !== 'step' && p !== 'pending') || 'pending';
   }
 
   function formatBody(id, data) {
@@ -281,6 +352,8 @@
       resultsTbody.appendChild(tr);
     }
     resultsCard.hidden = false;
+    qnResultsLink.classList.remove('qn-disabled');
+    qnResultsLink.removeAttribute('aria-disabled');
     resultsCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
@@ -296,6 +369,13 @@
     resultsCard.hidden = true;
     resultsTbody.innerHTML = '';
     summaryMeta.textContent = '';
+    if (pipelineHeader) pipelineHeader.hidden = true;
+    pipelineCounter.textContent = '';
+    qnProgress.hidden = true;
+    qnProgress.textContent = '';
+    qnProgress.classList.remove('has-error');
+    qnResultsLink.classList.add('qn-disabled');
+    qnResultsLink.setAttribute('aria-disabled', 'true');
   }
 
   function stop() {
@@ -402,6 +482,76 @@
     });
   });
 
+  // --- UI helpers: nav activa, scroll-to-top, expand/collapse all ---
+
+  // IntersectionObserver para resaltar la sección activa en la nav y
+  // alimentar la heurística de scroll del pipeline.
+  function setupSectionObserver() {
+    const sections = [
+      document.getElementById('form-section'),
+      document.getElementById('pipeline-section'),
+      document.getElementById('results'),
+    ].filter(Boolean);
+    const navLinks = document.querySelectorAll('.qn-link');
+
+    const setActive = (id) => {
+      activeSection = id;
+      navLinks.forEach((a) => {
+        a.classList.toggle('qn-active', a.dataset.section === id);
+      });
+    };
+
+    const obs = new IntersectionObserver((entries) => {
+      // Elige la sección con mayor intersección visible.
+      let best = null;
+      let bestRatio = 0;
+      for (const e of entries) {
+        if (e.intersectionRatio > bestRatio) {
+          bestRatio = e.intersectionRatio;
+          best = e.target;
+        }
+      }
+      // Si la entrada no es la mejor, mantén la actual visible.
+      const current = sections.find((s) => {
+        const r = s.getBoundingClientRect();
+        return r.top < window.innerHeight / 2 && r.bottom > 60;
+      });
+      if (current) setActive(current.id);
+      else if (best) setActive(best.id);
+    }, { rootMargin: '-60px 0px -40% 0px', threshold: [0, 0.25, 0.5, 1] });
+
+    sections.forEach((s) => obs.observe(s));
+  }
+
+  // Botón "↑ Top" — visible tras 400 px de scroll.
+  function setupToTop() {
+    const onScroll = () => {
+      const y = window.scrollY || document.documentElement.scrollTop;
+      toTopBtn.hidden = false;
+      toTopBtn.classList.toggle('visible', y > 400);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    toTopBtn.addEventListener('click', () => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+
+  // Expand / collapse all — operan sobre <details.step>.
+  expandAllBtn.addEventListener('click', () => {
+    pipeline.querySelectorAll('details.step').forEach((d) => {
+      d.open = true;
+      d.dataset.userToggled = 'true';
+    });
+  });
+  collapseAllBtn.addEventListener('click', () => {
+    pipeline.querySelectorAll('details.step').forEach((d) => {
+      d.open = false;
+      d.dataset.userToggled = 'true';
+    });
+  });
+
   // --- bootstrap ---
   loadLocale(pickInitialLocale());
+  setupSectionObserver();
+  setupToTop();
 })();
