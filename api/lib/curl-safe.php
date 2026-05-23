@@ -21,21 +21,18 @@ function safe_curl_error(int $errno, string $detail = ''): string
         error_log(sprintf('[cdnpeel] curl errno=%d detail=%s', $errno, $detail));
     }
 
-    switch ($errno) {
-        case CURLE_OPERATION_TIMEDOUT:
-            return 'timeout';
-
-        case CURLE_COULDNT_RESOLVE_HOST:
-        case CURLE_COULDNT_RESOLVE_PROXY:
-            return 'dns error';
-
-        case CURLE_SSL_CONNECT_ERROR:
-        case CURLE_SSL_CERTPROBLEM:
-        case CURLE_SSL_CACERT:
-        case CURLE_PEER_FAILED_VERIFICATION:
-            return 'tls error';
-
-        default:
-            return 'network error';
+    // CURLE_PEER_FAILED_VERIFICATION (51) puede no estar definido como
+    // constante PHP en builds antiguos de libcurl o en algunos paquetes de
+    // PHP. Comprobamos por valor numérico para no romper.
+    if ($errno === CURLE_OPERATION_TIMEDOUT) return 'timeout';
+    if ($errno === CURLE_COULDNT_RESOLVE_HOST || $errno === CURLE_COULDNT_RESOLVE_PROXY) {
+        return 'dns error';
     }
+    if ($errno === CURLE_SSL_CONNECT_ERROR
+        || $errno === CURLE_SSL_CERTPROBLEM
+        || $errno === CURLE_SSL_CACERT
+        || $errno === 51 /* CURLE_PEER_FAILED_VERIFICATION */) {
+        return 'tls error';
+    }
+    return 'network error';
 }

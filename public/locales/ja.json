@@ -3,7 +3,7 @@
     "app": {
         "name": "CDNPeel",
         "subtitle_html": "CDNを剥がしてオリジンIPを発見。<a href=\"https://github.com/musana/CF-Hero\" target=\"_blank\" rel=\"noopener\">CF-Hero</a>に着想を得て、複数のCDNに対応。",
-        "version": "v1.9.1"
+        "version": "v1.9.2"
     },
     "form": {
         "domain_label": "対象ドメイン",
@@ -95,7 +95,7 @@
         "expand_all": "すべて開く",
         "collapse_all": "すべて折りたたむ"
     },
-    "footer_html": "CDNPeel v1.9.1 — MITライセンス。<a href=\"https://colorvivo.com/\" target=\"_blank\" rel=\"noopener\">Color Vivo Internet</a> と <a href=\"https://carrero.es\" target=\"_blank\" rel=\"noopener\">David Carrero</a> による。",
+    "footer_html": "CDNPeel v1.9.2 — MITライセンス。<a href=\"https://colorvivo.com/\" target=\"_blank\" rel=\"noopener\">Color Vivo Internet</a> と <a href=\"https://carrero.es\" target=\"_blank\" rel=\"noopener\">David Carrero</a> による。",
     "history": {
         "title": "最近のスキャン",
         "clear": "履歴をクリア",

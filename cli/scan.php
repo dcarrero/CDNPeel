@@ -95,7 +95,7 @@ function sanitize_terminal_text(string $s): string
 
 // Banner display
 echo C_BOLD . C_CYAN . "=====================================================" . C_RESET . "\n";
-echo C_BOLD . C_YELLOW . "  CDNPeel " . C_RESET . C_GRAY . "- Origin IP Discovery CLI (v1.9.1)\n" . C_RESET;
+echo C_BOLD . C_YELLOW . "  CDNPeel " . C_RESET . C_GRAY . "- Origin IP Discovery CLI (v1.9.2)\n" . C_RESET;
 echo C_BOLD . C_CYAN . "=====================================================" . C_RESET . "\n";
 echo C_BOLD . "Target:  " . C_RESET . C_CYAN . $domain . C_RESET . "\n";
 if ($manualTitle !== '') {

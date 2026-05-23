@@ -5,6 +5,17 @@ All notable changes to CDNPeel are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.2] - 2026-05-23
+
+Patch release fixing two regressions/latent bugs exposed by end-to-end testing
+of the 1.9.1 audit fixes.
+
+### Fixed
+- **`CURLOPT_RESOLVE` with mixed IPv4/IPv6**: `fetch_title_direct()` and `fetch_favicon_bytes()` were emitting one `host:port:ip` entry per IP. libcurl only honors the *last* entry for a given `host:port`, so on the new A+AAAA path (1.9.1) the IPv6 entry would always win and the request would fail on hosts without routable IPv6. Fixed by collapsing all IPs into a single comma-separated value per port and listing IPv4 before IPv6.
+- **`CURLE_PEER_FAILED_VERIFICATION` undefined constant**: `api/lib/curl-safe.php` referenced this constant directly in a `case`. PHP 8.5 with libcurl 8.19 (and any build that does not expose it as a PHP constant) raised a fatal error on every TLS-level cURL failure. Replaced the `switch` with `if`s using the numeric code (51) as fallback so the helper degrades gracefully on any libcurl build.
+
+Verified end-to-end against `colorvivo.com` with HackerTarget enabled: origin IP discovered correctly (`185.103.39.242`).
+
 ## [1.9.1] - 2026-05-23
 
 Hardening release after a full audit (Claude Code + OpenAI Codex GPT-5.4) of the
@@ -154,6 +165,7 @@ Initial public release.
 - 8-language UI: English, Spanish, French, German, Italian, Portuguese,
   Japanese, Korean.
 
+[1.9.2]: https://github.com/dcarrero/CDNPeel/releases/tag/v1.9.2
 [1.9.1]: https://github.com/dcarrero/CDNPeel/releases/tag/v1.9.1
 [1.9.0]: https://github.com/dcarrero/CDNPeel/releases/tag/v1.9.0
 [1.8.0]: https://github.com/dcarrero/CDNPeel/releases/tag/v1.8.0

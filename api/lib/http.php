@@ -95,14 +95,24 @@ function fetch_title_direct(string $domain, array $resolveIps = [], int $timeout
     ];
     // Con WRITEFUNCTION en uso, RETURNTRANSFER no acumula nada: leemos $body por referencia.
     $opts[CURLOPT_RETURNTRANSFER] = false;
-    $resolve = [];
+    // CURLOPT_RESOLVE acepta una lista CSV de IPs por entrada host:port.
+    // Si añadimos varias entradas separadas para el mismo par host:port,
+    // libcurl conserva solo la última, lo que en hosts mixtos v4/v6 puede
+    // fijar una IPv6 no enrutable. Con CSV libcurl itera por todas.
+    $v4 = []; $v6 = [];
     foreach ($resolveIps as $ip) {
-        $isV6 = filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false;
-        $host = $isV6 ? "[$ip]" : $ip;
-        $resolve[] = "$domain:443:$host";
-        $resolve[] = "$domain:80:$host";
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+            $v6[] = '[' . $ip . ']';
+        } else {
+            $v4[] = $ip;
+        }
     }
-    $opts[CURLOPT_RESOLVE] = $resolve;
+    $ordered = array_merge($v4, $v6); // preferimos IPv4 primero para entornos sin IPv6 saliente
+    $csv = implode(',', $ordered);
+    $opts[CURLOPT_RESOLVE] = [
+        "$domain:443:$csv",
+        "$domain:80:$csv",
+    ];
     curl_setopt_array($ch, $opts);
     $ok = curl_exec($ch);
     $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
@@ -320,14 +330,21 @@ function fetch_favicon_bytes(string $domain, array $resolveIps = [], int $timeou
             return strlen($chunk);
         },
     ];
-    $resolve = [];
+    // CSV en CURLOPT_RESOLVE (ver fetch_title_direct).
+    $v4 = []; $v6 = [];
     foreach ($resolveIps as $ip) {
-        $isV6 = filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false;
-        $host = $isV6 ? "[$ip]" : $ip;
-        $resolve[] = "$domain:443:$host";
-        $resolve[] = "$domain:80:$host";
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+            $v6[] = '[' . $ip . ']';
+        } else {
+            $v4[] = $ip;
+        }
     }
-    $opts[CURLOPT_RESOLVE] = $resolve;
+    $ordered = array_merge($v4, $v6);
+    $csv = implode(',', $ordered);
+    $opts[CURLOPT_RESOLVE] = [
+        "$domain:443:$csv",
+        "$domain:80:$csv",
+    ];
     curl_setopt_array($ch, $opts);
     $ok = curl_exec($ch);
     $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
