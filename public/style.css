@@ -636,6 +636,21 @@ footer {
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.35), 0 0 14px rgba(88, 166, 255, 0.08);
 }
 
+/* Row variants (CSP-safe replacements for previous inline styles) */
+.history-actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+}
+#clear-history {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+.results-actions {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 /* Textarea style */
 #domains_textarea {
   background: var(--bg-card-2);
