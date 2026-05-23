@@ -3,7 +3,7 @@
     "app": {
         "name": "CDNPeel",
         "subtitle_html": "Descasque o CDN para encontrar o IP de origem. Inspirado em <a href=\"https://github.com/musana/CF-Hero\" target=\"_blank\" rel=\"noopener\">CF-Hero</a>, estendido para múltiplos CDNs.",
-        "version": "v1.7.0"
+        "version": "v1.8.0"
     },
     "form": {
         "domain_label": "Domínio alvo",
@@ -20,7 +20,11 @@
         "censys_secret_label": "Censys API secret",
         "keys_note": "As chaves são guardadas apenas no seu navegador (sessionStorage) e enviadas ao servidor unicamente durante a varredura.",
         "manual_title_label": "Título Baseline Manual (Opcional)",
-        "manual_title_placeholder": "ex. Meu Site Home"
+        "manual_title_placeholder": "ex. Meu Site Home",
+        "mode_single": "Domínio único",
+        "mode_batch": "Modo em lote",
+        "domains_textarea_label": "Domínios de destino (um por linha)",
+        "domains_textarea_placeholder": "dominio1.com\ndominio2.com"
     },
     "buttons": {
         "scan": "Analisar",
@@ -29,7 +33,9 @@
         "copy_real": "Copiar IPs de origem",
         "copy_all": "Copiar todas as candidatas",
         "copied": "Copiado ✓",
-        "no_origin": "Sem IPs de origem"
+        "no_origin": "Sem IPs de origem",
+        "export_csv": "Exportar CSV",
+        "export_json": "Exportar JSON"
     },
     "legal": "Use esta ferramenta apenas em domínios próprios ou com autorização explícita. Você é responsável pelo uso que lhe der.",
     "steps": {
@@ -63,6 +69,7 @@
         "behind_cdn": "atrás de CDN",
         "not_behind_cdn": "nenhum CDN conhecido detectado",
         "baseline_title": "título de referência",
+        "col_domain": "Domínio",
         "col_ip": "IP",
         "col_source": "Origem",
         "col_verdict": "Veredito",
@@ -88,7 +95,7 @@
         "expand_all": "Expandir tudo",
         "collapse_all": "Recolher tudo"
     },
-    "footer_html": "CDNPeel v1.7.0 — licença MIT. Por <a href=\"https://colorvivo.com/\" target=\"_blank\" rel=\"noopener\">Color Vivo Internet</a> e <a href=\"https://carrero.es\" target=\"_blank\" rel=\"noopener\">David Carrero</a>.",
+    "footer_html": "CDNPeel v1.8.0 — licença MIT. Por <a href=\"https://colorvivo.com/\" target=\"_blank\" rel=\"noopener\">Color Vivo Internet</a> e <a href=\"https://carrero.es\" target=\"_blank\" rel=\"noopener\">David Carrero</a>.",
     "history": {
         "title": "Varreduras recentes",
         "clear": "Limpar histórico",

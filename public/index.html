@@ -13,7 +13,7 @@
   <div class="brand">
     <span class="dot"></span>
     <h1 data-i18n="app.name">CDNPeel</h1>
-    <span class="tag" data-i18n="app.version">v1.7.0</span>
+    <span class="tag" data-i18n="app.version">v1.8.0</span>
     <select id="lang-picker" class="lang-picker" aria-label="Language">
       <option value="en">English</option>
       <option value="es">Español</option>
@@ -39,15 +39,29 @@
 <main>
   <section id="form-section" class="card form">
     <form id="scan-form" autocomplete="off">
-      <label class="field">
-        <span data-i18n="form.domain_label">Target domain</span>
-        <input id="domain" name="domain" type="text" data-i18n-placeholder="form.domain_placeholder" required spellcheck="false">
-      </label>
+      <div class="mode-tabs">
+        <button type="button" class="tab-btn active" data-mode="single" data-i18n="form.mode_single">Single Domain</button>
+        <button type="button" class="tab-btn" data-mode="batch" data-i18n="form.mode_batch">Batch Mode</button>
+      </div>
 
-      <label class="field">
-        <span data-i18n="form.manual_title_label">Manual Baseline Title (Optional)</span>
-        <input id="manual_title" name="manual_title" type="text" data-i18n-placeholder="form.manual_title_placeholder" spellcheck="false">
-      </label>
+      <div id="single-fields">
+        <label class="field">
+          <span data-i18n="form.domain_label">Target domain</span>
+          <input id="domain" name="domain" type="text" data-i18n-placeholder="form.domain_placeholder" required spellcheck="false">
+        </label>
+
+        <label class="field">
+          <span data-i18n="form.manual_title_label">Manual Baseline Title (Optional)</span>
+          <input id="manual_title" name="manual_title" type="text" data-i18n-placeholder="form.manual_title_placeholder" spellcheck="false">
+        </label>
+      </div>
+
+      <div id="batch-fields" hidden>
+        <label class="field">
+          <span data-i18n="form.domains_textarea_label">Target domains (one per line)</span>
+          <textarea id="domains_textarea" data-i18n-placeholder="form.domains_textarea_placeholder" spellcheck="false" rows="6" style="background: var(--bg-card-2); border: 1px solid var(--border); color: var(--text); padding: 10px 12px; border-radius: 8px; font-family: var(--mono); font-size: 14px; outline: none; resize: vertical; width: 100%;"></textarea>
+        </label>
+      </div>
 
       <details class="extras" open>
         <summary data-i18n="form.free_sources_title">Free additional sources (optional)</summary>
@@ -128,6 +142,7 @@
     <div id="summary-meta" class="meta"></div>
     <table id="results-table">
       <colgroup>
+        <col class="col-domain" id="col-domain-col" hidden>
         <col class="col-ip">
         <col class="col-source">
         <col class="col-verdict">
@@ -137,6 +152,7 @@
       </colgroup>
       <thead>
         <tr>
+          <th id="col-domain-header" data-i18n="results.col_domain" hidden>Domain</th>
           <th data-i18n="results.col_ip">IP</th>
           <th data-i18n="results.col_source">Source</th>
           <th data-i18n="results.col_verdict">Verdict</th>
@@ -147,9 +163,11 @@
       </thead>
       <tbody></tbody>
     </table>
-    <div class="row">
+    <div class="row" style="flex-wrap: wrap; gap: 8px;">
       <button id="copy-real" data-i18n="buttons.copy_real">Copy origin IPs</button>
       <button id="copy-all" data-i18n="buttons.copy_all">Copy all candidates</button>
+      <button id="export-csv" class="ghost-btn" data-i18n="buttons.export_csv">Export CSV</button>
+      <button id="export-json" class="ghost-btn" data-i18n="buttons.export_json">Export JSON</button>
     </div>
   </section>
 </main>

@@ -5,6 +5,13 @@ All notable changes to CDNPeel are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] - 2026-05-23
+
+### Added
+- **Batch Mode**: Analyze multiple domains sequentially within a single browser session. Resolves each target domain sequentially to protect API rate limits and conserve client-side memory.
+- **CSV & JSON Export**: Added buttons to instantly export discovered origin IPs and candidates (with open ports, web titles, and domain sources) into clean, standard CSV or JSON formats.
+- **Localized UI Elements**: Full translations of batch mode and export strings across all 8 supported languages.
+
 ## [1.7.0] - 2026-05-23
 
 ### Added
@@ -111,6 +118,7 @@ Initial public release.
 - 8-language UI: English, Spanish, French, German, Italian, Portuguese,
   Japanese, Korean.
 
+[1.8.0]: https://github.com/dcarrero/CDNPeel/releases/tag/v1.8.0
 [1.7.0]: https://github.com/dcarrero/CDNPeel/releases/tag/v1.7.0
 [1.6.0]: https://github.com/dcarrero/CDNPeel/releases/tag/v1.6.0
 [1.5.0]: https://github.com/dcarrero/CDNPeel/releases/tag/v1.5.0

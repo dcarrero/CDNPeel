@@ -3,7 +3,7 @@
     "app": {
         "name": "CDNPeel",
         "subtitle_html": "CDN을 벗겨내어 원본 IP를 찾습니다. <a href=\"https://github.com/musana/CF-Hero\" target=\"_blank\" rel=\"noopener\">CF-Hero</a>에서 영감을 받아 여러 CDN으로 확장.",
-        "version": "v1.7.0"
+        "version": "v1.8.0"
     },
     "form": {
         "domain_label": "대상 도메인",
@@ -20,7 +20,11 @@
         "censys_secret_label": "Censys API secret",
         "keys_note": "키는 브라우저(sessionStorage)에만 저장되며 스캔 중에만 서버로 전송됩니다.",
         "manual_title_label": "수동 기준 제목 (선택 사항)",
-        "manual_title_placeholder": "예: 내 웹사이트 홈"
+        "manual_title_placeholder": "예: 내 웹사이트 홈",
+        "mode_single": "단일 도메인",
+        "mode_batch": "일괄 모드",
+        "domains_textarea_label": "대상 도메인 (한 줄에 하나씩)",
+        "domains_textarea_placeholder": "domain1.com\ndomain2.com"
     },
     "buttons": {
         "scan": "스캔",
@@ -29,7 +33,9 @@
         "copy_real": "원본 IP 복사",
         "copy_all": "모든 후보 복사",
         "copied": "복사됨 ✓",
-        "no_origin": "원본 IP 없음"
+        "no_origin": "원본 IP 없음",
+        "export_csv": "CSV 내보내기",
+        "export_json": "JSON 내보내기"
     },
     "legal": "이 도구는 본인 소유의 도메인이나 명시적 허가가 있는 경우에만 사용하십시오. 사용에 대한 책임은 본인에게 있습니다.",
     "steps": {
@@ -63,6 +69,7 @@
         "behind_cdn": "CDN 뒤",
         "not_behind_cdn": "알려진 CDN이 감지되지 않음",
         "baseline_title": "기준 제목",
+        "col_domain": "도메인",
         "col_ip": "IP",
         "col_source": "소스",
         "col_verdict": "판정",
@@ -88,7 +95,7 @@
         "expand_all": "모두 펼치기",
         "collapse_all": "모두 접기"
     },
-    "footer_html": "CDNPeel v1.7.0 — MIT 라이선스. <a href=\"https://colorvivo.com/\" target=\"_blank\" rel=\"noopener\">Color Vivo Internet</a> 및 <a href=\"https://carrero.es\" target=\"_blank\" rel=\"noopener\">David Carrero</a> 제작.",
+    "footer_html": "CDNPeel v1.8.0 — MIT 라이선스. <a href=\"https://colorvivo.com/\" target=\"_blank\" rel=\"noopener\">Color Vivo Internet</a> 및 <a href=\"https://carrero.es\" target=\"_blank\" rel=\"noopener\">David Carrero</a> 제작.",
     "history": {
         "title": "최근 스캔",
         "clear": "기록 지우기",

@@ -3,7 +3,7 @@
     "app": {
         "name": "CDNPeel",
         "subtitle_html": "CDNを剥がしてオリジンIPを発見。<a href=\"https://github.com/musana/CF-Hero\" target=\"_blank\" rel=\"noopener\">CF-Hero</a>に着想を得て、複数のCDNに対応。",
-        "version": "v1.7.0"
+        "version": "v1.8.0"
     },
     "form": {
         "domain_label": "対象ドメイン",
@@ -20,7 +20,11 @@
         "censys_secret_label": "Censys API secret",
         "keys_note": "キーはブラウザ (sessionStorage) のみに保存され、スキャン中にのみサーバーに送信されます。",
         "manual_title_label": "手動基準タイトル（オプション）",
-        "manual_title_placeholder": "例：私のホームページ"
+        "manual_title_placeholder": "例：私のホームページ",
+        "mode_single": "単一ドメイン",
+        "mode_batch": "一括モード",
+        "domains_textarea_label": "対象ドメイン（1行に1つ）",
+        "domains_textarea_placeholder": "domain1.com\ndomain2.com"
     },
     "buttons": {
         "scan": "スキャン",
@@ -29,7 +33,9 @@
         "copy_real": "オリジンIPをコピー",
         "copy_all": "全候補をコピー",
         "copied": "コピー済み ✓",
-        "no_origin": "オリジンIPなし"
+        "no_origin": "オリジンIPなし",
+        "export_csv": "CSV出力",
+        "export_json": "JSON出力"
     },
     "legal": "このツールは所有するドメインまたは明示的な許可がある場合にのみ使用してください。使用責任はあなたにあります。",
     "steps": {
@@ -63,6 +69,7 @@
         "behind_cdn": "CDNの背後",
         "not_behind_cdn": "既知のCDNは検出されませんでした",
         "baseline_title": "基準タイトル",
+        "col_domain": "ドメイン",
         "col_ip": "IP",
         "col_source": "ソース",
         "col_verdict": "判定",
@@ -88,7 +95,7 @@
         "expand_all": "すべて開く",
         "collapse_all": "すべて折りたたむ"
     },
-    "footer_html": "CDNPeel v1.7.0 — MITライセンス。<a href=\"https://colorvivo.com/\" target=\"_blank\" rel=\"noopener\">Color Vivo Internet</a> と <a href=\"https://carrero.es\" target=\"_blank\" rel=\"noopener\">David Carrero</a> による。",
+    "footer_html": "CDNPeel v1.8.0 — MITライセンス。<a href=\"https://colorvivo.com/\" target=\"_blank\" rel=\"noopener\">Color Vivo Internet</a> と <a href=\"https://carrero.es\" target=\"_blank\" rel=\"noopener\">David Carrero</a> による。",
     "history": {
         "title": "最近のスキャン",
         "clear": "履歴をクリア",

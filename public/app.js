@@ -20,6 +20,10 @@
   const historyList = $('#history-list');
   const historyCounter = $('#history-counter');
   const clearHistoryBtn = $('#clear-history');
+  const singleFields = $('#single-fields');
+  const batchFields = $('#batch-fields');
+  const domainInput = $('#domain');
+  const domainsTextarea = $('#domains_textarea');
 
   // Estados que indican que el paso "ya pasó" y por tanto se puede plegar.
   const SETTLED_STATUSES = new Set(['done', 'match', 'no-match', 'skipped', 'info']);
@@ -100,6 +104,31 @@
     if (saved === '1') el.checked = true;
     el.addEventListener('change', () => sessionStorage.setItem('cdnpeel:' + id, el.checked ? '1' : '0'));
   }
+
+  // --- Scan mode switcher ---
+  let scanMode = 'single';
+  const savedTextarea = sessionStorage.getItem('cdnpeel:domains_textarea');
+  if (savedTextarea) domainsTextarea.value = savedTextarea;
+  domainsTextarea.addEventListener('input', () => sessionStorage.setItem('cdnpeel:domains_textarea', domainsTextarea.value));
+
+  document.querySelectorAll('.mode-tabs .tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.mode-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      scanMode = btn.dataset.mode;
+      if (scanMode === 'single') {
+        singleFields.hidden = false;
+        batchFields.hidden = true;
+        domainInput.required = true;
+        domainsTextarea.required = false;
+      } else {
+        singleFields.hidden = true;
+        batchFields.hidden = false;
+        domainInput.required = false;
+        domainsTextarea.required = true;
+      }
+    });
+  });
 
   // --- Scan / SSE ---
 
@@ -272,10 +301,15 @@
 
     resultsTbody.innerHTML = '';
     candidatesList = data.results || [];
+    const hasDomainColumn = candidatesList.some(r => r.domain);
+    $('#col-domain-header').hidden = !hasDomainColumn;
+    $('#col-domain-col').hidden = !hasDomainColumn;
+
     for (const r of candidatesList) {
       const tr = document.createElement('tr');
       tr.className = r.verdict;
       tr.innerHTML = `
+        ${hasDomainColumn ? `<td class="domain" style="font-weight: 500;"></td>` : ''}
         <td class="ip"></td>
         <td class="sources"></td>
         <td class="verdict"></td>
@@ -283,6 +317,10 @@
         <td class="title"><div class="title-text"></div></td>
         <td class="idb"></td>
       `;
+      if (hasDomainColumn) {
+        tr.querySelector('.domain').textContent = r.domain || '';
+        tr.querySelector('.domain').title = r.domain || '';
+      }
       tr.querySelector('.ip').textContent = r.ip;
       tr.querySelector('.ip').title = r.ip;
 
@@ -384,8 +422,14 @@
     qnResultsLink.setAttribute('aria-disabled', 'true');
   }
 
+  let batchQueue = [];
+  let currentBatchIndex = 0;
+  let batchResults = [];
+  let isStoppingBatch = false;
+
   function stop() {
     if (es) { es.close(); es = null; }
+    isStoppingBatch = true;
     runBtn.disabled = false;
     runBtn.textContent = t('buttons.scan');
     stopBtn.hidden = true;
@@ -412,28 +456,12 @@
     return data.scan_id || null;
   }
 
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (es) return;
-
-    reset();
-    const domain = $('#domain').value.trim();
-    if (!domain) return;
-
-    runBtn.disabled = true;
-    runBtn.textContent = t('buttons.scanning');
-    stopBtn.hidden = false;
-
+  async function runSSE(domain, onStep, onDone, onError) {
     let scanId = null;
     try {
       scanId = await obtainScanId();
     } catch (err) {
-      const el = getStepEl('connection');
-      el.className = 'step error';
-      el.querySelector('.status').textContent = 'error';
-      el.querySelector('.title').textContent = t('steps.connection');
-      el.querySelector('.msg').textContent = String(err && err.message ? err.message : err);
-      stop();
+      onError(err);
       return;
     }
 
@@ -443,38 +471,154 @@
       if (document.getElementById(id).checked) params.set(id, '1');
     }
     const manualTitle = $('#manual_title').value.trim();
-    if (manualTitle) params.set('manual_title', manualTitle);
+    if (manualTitle && scanMode === 'single') params.set('manual_title', manualTitle);
 
     es = new EventSource('../api/scan.php?' + params.toString());
     es.addEventListener('step', (ev) => {
       try {
         const payload = JSON.parse(ev.data);
-        renderStep(payload);
+        onStep(payload);
         if (payload.id === 'summary' && payload.status === 'done') {
-          renderSummary(payload.data);
-          saveToHistory(payload.data);
-          stop();
+          es.close();
+          es = null;
+          onDone(payload.data);
         }
         if (payload.id === 'fatal') {
-          // Hacer visible el motivo en la sección Pipeline: el evento ya se
-          // renderiza, pero el step "fatal" no estaba en el i18n de steps —
-          // sobreescribimos el title con el mensaje para que el usuario lo vea.
-          const el = document.getElementById('step-fatal');
-          if (el) el.open = true;
-          stop();
+          es.close();
+          es = null;
+          onError(payload.message || 'Fatal error');
         }
       } catch (err) {
         console.error('parse error', err, ev.data);
       }
     });
     es.onerror = () => {
-      const el = getStepEl('connection');
-      el.className = 'step error';
-      el.querySelector('.status').textContent = 'error';
-      el.querySelector('.title').textContent = t('steps.connection');
-      el.querySelector('.msg').textContent = t('steps.connection_lost');
-      stop();
+      if (es) {
+        es.close();
+        es = null;
+        onError(t('steps.connection_lost'));
+      }
     };
+  }
+
+  function runSingleScan(domain) {
+    runBtn.disabled = true;
+    runBtn.textContent = t('buttons.scanning');
+    stopBtn.hidden = false;
+    isStoppingBatch = false;
+
+    runSSE(domain,
+      (payload) => {
+        renderStep(payload);
+      },
+      (data) => {
+        renderSummary(data);
+        saveToHistory(data);
+        stop();
+      },
+      (err) => {
+        const el = getStepEl('connection');
+        el.className = 'step error';
+        el.querySelector('.status').textContent = 'error';
+        el.querySelector('.title').textContent = t('steps.connection');
+        el.querySelector('.msg').textContent = String(err && err.message ? err.message : err);
+        stop();
+      }
+    );
+  }
+
+  function runBatchScan(domains) {
+    runBtn.disabled = true;
+    runBtn.textContent = t('buttons.scanning');
+    stopBtn.hidden = false;
+    
+    batchQueue = domains;
+    currentBatchIndex = 0;
+    batchResults = [];
+    isStoppingBatch = false;
+    
+    // Hide results section initially
+    resultsCard.hidden = true;
+    
+    runNextBatchItem();
+  }
+
+  function runNextBatchItem() {
+    if (isStoppingBatch) {
+      stop();
+      return;
+    }
+    
+    if (currentBatchIndex >= batchQueue.length) {
+      renderBatchSummary();
+      stop();
+      return;
+    }
+    
+    const domain = batchQueue[currentBatchIndex];
+    reset(); // Clear pipeline steps to not overflow memory
+    
+    const progStep = getStepEl('batch_progress');
+    progStep.className = 'step info';
+    progStep.querySelector('.status').textContent = 'info';
+    progStep.querySelector('.title').textContent = `${t('form.mode_batch')} (${currentBatchIndex + 1}/${batchQueue.length})`;
+    progStep.querySelector('.msg').textContent = `Auditing ${domain}...`;
+    progStep.open = true;
+    updateCounter();
+
+    runSSE(domain,
+      (payload) => {
+        if (payload.status === 'running' || payload.status === 'done') {
+          progStep.querySelector('.msg').textContent = `[${domain}] ${payload.message || payload.id}`;
+        }
+      },
+      (data) => {
+        const domainResults = (data.results || []).map(r => ({ ...r, domain }));
+        batchResults.push(...domainResults);
+        saveToHistory(data);
+        currentBatchIndex++;
+        runNextBatchItem();
+      },
+      (err) => {
+        const errStep = getStepEl(`err_${currentBatchIndex}`);
+        errStep.className = 'step error';
+        errStep.querySelector('.status').textContent = 'error';
+        errStep.querySelector('.title').textContent = domain;
+        errStep.querySelector('.msg').textContent = String(err);
+        
+        currentBatchIndex++;
+        setTimeout(runNextBatchItem, 1500);
+      }
+    );
+  }
+
+  function renderBatchSummary() {
+    const data = {
+      domain: `Batch Scan (${batchQueue.length} domains)`,
+      behind_cdn: false,
+      cdn_provider_names: [],
+      baseline_title: '—',
+      results: batchResults
+    };
+    renderSummary(data);
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (es) return;
+
+    reset();
+    
+    if (scanMode === 'single') {
+      const domain = domainInput.value.trim();
+      if (!domain) return;
+      runSingleScan(domain);
+    } else {
+      const rawText = domainsTextarea.value.trim();
+      const domains = rawText.split('\n').map(d => d.trim()).filter(Boolean);
+      if (domains.length === 0) return;
+      runBatchScan(domains);
+    }
   });
 
   stopBtn.addEventListener('click', stop);
@@ -495,6 +639,62 @@
       setTimeout(() => (btn.textContent = t('buttons.copy_all')), 1500);
     });
   });
+
+  // --- Exporting CSV / JSON ---
+  function exportCSV() {
+    if (candidatesList.length === 0) return;
+    
+    const hasDomain = candidatesList.some(r => r.domain);
+    const headers = [
+      hasDomain ? 'Domain' : null,
+      'IP',
+      'Sources',
+      'Verdict',
+      'HTTP Status',
+      'Title',
+      'Open Ports'
+    ].filter(Boolean);
+    
+    const rows = [headers];
+    
+    candidatesList.forEach(r => {
+      const ports = (r.internetdb && r.internetdb.ports) ? r.internetdb.ports.join(';') : '';
+      const row = [
+        hasDomain ? r.domain || '' : null,
+        r.ip,
+        r.sources.join(';'),
+        r.verdict,
+        r.status || '0',
+        r.title || '',
+        ports
+      ].filter(val => val !== null);
+      rows.push(row.map(val => `"${String(val).replace(/"/g, '""')}"`));
+    });
+    
+    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + rows.map(e => e.join(',')).join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `cdnpeel_export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  function exportJSON() {
+    if (candidatesList.length === 0) return;
+    
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(candidatesList, null, 2));
+    const link = document.createElement('a');
+    link.setAttribute('href', dataStr);
+    link.setAttribute('download', `cdnpeel_export_${new Date().toISOString().split('T')[0]}.json`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  $('#export-csv').addEventListener('click', exportCSV);
+  $('#export-json').addEventListener('click', exportJSON);
 
   // --- UI helpers: nav activa, scroll-to-top, expand/collapse all ---
 
