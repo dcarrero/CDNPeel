@@ -5,6 +5,13 @@ All notable changes to CDNPeel are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2026-05-23
+
+### Added
+- **Manual Baseline Title (Optional)**: Allows the user to specify a baseline title to bypass strict CDN protection/challenges (like captchas or interstitial pages) that block direct baseline fetches.
+- **Favicon Hash Search (Shodan / Censys)**: Downloads the target favicon and calculates both MurmurHash3 (used by Shodan) and MD5 (used by Censys) in pure PHP. It queries Shodan and Censys APIs using these hashes to find hidden origin servers.
+- **Favicon tagging in results**: Candidates discovered via favicon hash are labeled with the `favicon` note in the results table.
+
 ## [1.6.0] - 2026-05-22
 
 ### Added
@@ -102,6 +109,7 @@ Initial public release.
 - 8-language UI: English, Spanish, French, German, Italian, Portuguese,
   Japanese, Korean.
 
+[1.7.0]: https://github.com/dcarrero/CDNPeel/releases/tag/v1.7.0
 [1.6.0]: https://github.com/dcarrero/CDNPeel/releases/tag/v1.6.0
 [1.5.0]: https://github.com/dcarrero/CDNPeel/releases/tag/v1.5.0
 [1.0.0]: https://github.com/dcarrero/CDNPeel/releases/tag/v1.0.0

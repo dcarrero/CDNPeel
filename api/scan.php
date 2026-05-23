@@ -223,14 +223,46 @@ if ($otxKey !== '') {
     emit('osint_otx', 'skipped', 'OTX requires free key (otx.alienvault.com)');
 }
 
+// === Hashing del Favicon ===
+$faviconMd5 = null;
+$faviconMmh3 = null;
+
+emit('fetch_favicon', 'running', 'Downloading and hashing favicon');
+$faviconBytes = fetch_favicon_bytes($domain, $aIps);
+if ($faviconBytes !== null) {
+    $hashes = calculate_favicon_hashes($faviconBytes);
+    $faviconMd5 = $hashes['md5'];
+    $faviconMmh3 = $hashes['mmh3'];
+    emit('fetch_favicon', 'done', "Favicon hashed: MMH3 {$faviconMmh3} · MD5 {$faviconMd5}", [
+        'md5' => $faviconMd5,
+        'mmh3' => $faviconMmh3,
+    ]);
+} else {
+    emit('fetch_favicon', 'skipped', 'Favicon not found or fetch failed');
+}
+
 // === Fuentes con API key (opcionales) ===
-$shodanIps = [];
+$shodanDnsIps = [];
+$shFavIps = [];
 if ($shodanKey !== '') {
-    emit('osint_shodan', 'running', 'Querying Shodan');
+    emit('osint_shodan', 'running', 'Querying Shodan (DNS + Favicon)');
     $sh = shodan_lookup($domain, $shodanKey);
     if ($sh['ok']) {
-        $shodanIps = $sh['ips'];
-        emit('osint_shodan', 'done', count($shodanIps) . ' IP(s) from Shodan', ['ips' => $shodanIps]);
+        $shodanDnsIps = $sh['ips'];
+    }
+    
+    $favMsg = '';
+    if ($faviconMmh3 !== null) {
+        $shFav = shodan_favicon_search($faviconMmh3, $shodanKey);
+        if ($shFav['ok'] && !empty($shFav['ips'])) {
+            $shFavIps = $shFav['ips'];
+            $favMsg = ' · ' . count($shFavIps) . ' from favicon hash';
+        }
+    }
+    
+    $shTotalIps = array_values(array_unique(array_merge($shodanDnsIps, $shFavIps)));
+    if ($sh['ok'] || !empty($shFavIps)) {
+        emit('osint_shodan', 'done', count($shTotalIps) . ' IP(s) from Shodan (DNS: ' . count($shodanDnsIps) . $favMsg . ')', ['ips' => $shTotalIps]);
     } else {
         emit('osint_shodan', 'error', $sh['error'] ?: 'Shodan error', []);
     }
@@ -238,13 +270,27 @@ if ($shodanKey !== '') {
     emit('osint_shodan', 'skipped', 'No Shodan key provided');
 }
 
-$censysIps = [];
+$censysDnsIps = [];
+$csFavIps = [];
 if ($censysId !== '' && $censysSecret !== '') {
-    emit('osint_censys', 'running', 'Querying Censys');
+    emit('osint_censys', 'running', 'Querying Censys (Hosts + Favicon)');
     $cs = censys_lookup($domain, $censysId, $censysSecret);
     if ($cs['ok']) {
-        $censysIps = $cs['ips'];
-        emit('osint_censys', 'done', count($censysIps) . ' IP(s) from Censys', ['ips' => $censysIps]);
+        $censysDnsIps = $cs['ips'];
+    }
+    
+    $favMsg = '';
+    if ($faviconMd5 !== null) {
+        $csFav = censys_favicon_search($faviconMd5, $censysId, $censysSecret);
+        if ($csFav['ok'] && !empty($csFav['ips'])) {
+            $csFavIps = $csFav['ips'];
+            $favMsg = ' · ' . count($csFavIps) . ' from favicon hash';
+        }
+    }
+    
+    $csTotalIps = array_values(array_unique(array_merge($censysDnsIps, $csFavIps)));
+    if ($cs['ok'] || !empty($csFavIps)) {
+        emit('osint_censys', 'done', count($csTotalIps) . ' IP(s) from Censys (DNS: ' . count($censysDnsIps) . $favMsg . ')', ['ips' => $csTotalIps]);
     } else {
         emit('osint_censys', 'error', $cs['error'] ?: 'Censys error', []);
     }
@@ -315,8 +361,10 @@ foreach ($subdomainNonCfIps as $ip) {
 }
 foreach ($otxIps as $ip) $mark($ip, 'OTX');
 foreach ($htIps as $ip) $mark($ip, 'HackerTarget');
-foreach ($shodanIps as $ip) $mark($ip, 'Shodan');
-foreach ($censysIps as $ip) $mark($ip, 'Censys');
+foreach ($shodanDnsIps as $ip) $mark($ip, 'Shodan');
+foreach ($shFavIps as $ip) $mark($ip, 'Shodan', 'favicon');
+foreach ($censysDnsIps as $ip) $mark($ip, 'Censys');
+foreach ($csFavIps as $ip) $mark($ip, 'Censys', 'favicon');
 
 emit('candidates', 'done', count($candidates) . ' candidate IP(s)', ['ips' => array_values($candidates)]);
 

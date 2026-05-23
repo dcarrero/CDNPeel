@@ -3,7 +3,7 @@
     "app": {
         "name": "CDNPeel",
         "subtitle_html": "Pela el CDN para encontrar la IP de origen. Inspirado en <a href=\"https://github.com/musana/CF-Hero\" target=\"_blank\" rel=\"noopener\">CF-Hero</a>, extendido a múltiples CDNs.",
-        "version": "v1.6.0"
+        "version": "v1.7.0"
     },
     "form": {
         "domain_label": "Dominio objetivo",
@@ -48,6 +48,7 @@
         "osint_censys": "Censys (API key)",
         "enrich_internetdb": "Enriquecimiento Shodan InternetDB",
         "fetch_baseline": "Title de referencia",
+        "fetch_favicon": "Hashing de Favicon",
         "candidates": "Candidatas finales",
         "summary": "Resumen",
         "validate_prefix": "Validar ",
@@ -86,5 +87,5 @@
         "expand_all": "Expandir todo",
         "collapse_all": "Plegar todo"
     },
-    "footer_html": "CDNPeel v1.6.0 — licencia MIT. Por <a href=\"https://colorvivo.com/\" target=\"_blank\" rel=\"noopener\">Color Vivo Internet</a> y <a href=\"https://carrero.es\" target=\"_blank\" rel=\"noopener\">David Carrero</a>."
+    "footer_html": "CDNPeel v1.7.0 — licencia MIT. Por <a href=\"https://colorvivo.com/\" target=\"_blank\" rel=\"noopener\">Color Vivo Internet</a> y <a href=\"https://carrero.es\" target=\"_blank\" rel=\"noopener\">David Carrero</a>."
 }

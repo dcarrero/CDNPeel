@@ -3,7 +3,7 @@
 > **Peel back the CDN to find the origin IP.**
 > A minimalist, dependency-free web tool that discovers the real origin IP address of websites protected by Cloudflare, Fastly, Akamai, AWS CloudFront, Imperva, Sucuri, BunnyCDN, KeyCDN, CDN77, StackPath, Google Cloud Front-end, Azure Front Door and TransparentEdge.
 
-[![Version](https://img.shields.io/badge/version-1.6.0-orange.svg)](#)
+[![Version](https://img.shields.io/badge/version-1.7.0-orange.svg)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](#license)
 [![PHP](https://img.shields.io/badge/PHP-8.0%2B-blue.svg)](#)
 
@@ -262,7 +262,7 @@ Unauthorized use against third parties may violate local computer crime law. **Y
 - [ ] SecurityTrails and ZoomEye integrations (same pattern as Shodan/Censys)
 - [ ] Batch mode (list of domains)
 - [ ] Persistent history (opt-in)
-- [ ] Favicon hash search
+- [x] Favicon hash search
 - [ ] CLI runner
 
 ## Credits

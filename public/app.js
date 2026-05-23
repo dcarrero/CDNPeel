@@ -220,6 +220,9 @@
       }
       return lines.join('\n');
     }
+    if (id === 'fetch_favicon' && data.md5) {
+      return `MurmurHash3: ${data.mmh3}\nMD5: ${data.md5}`;
+    }
     if (id === 'fetch_baseline' && data.header_provider_names && data.header_provider_names.length) {
       const lines = [];
       if (data.title) lines.push('Title: ' + data.title);

@@ -85,3 +85,61 @@ function censys_lookup(string $domain, string $id, string $secret): array
     }
     return ['ok' => true, 'ips' => array_values(array_unique($ips)), 'error' => null];
 }
+
+/**
+ * Shodan: buscar hosts que expongan el mismo favicon hash (MurmurHash3).
+ */
+function shodan_favicon_search(int $mmh3Hash, string $key): array
+{
+    $key = trim($key);
+    if ($key === '') return ['ok' => false, 'ips' => [], 'error' => 'missing key'];
+
+    $url = 'https://api.shodan.io/shodan/host/search?' . http_build_query([
+        'key' => $key,
+        'query' => 'http.favicon.hash:' . $mmh3Hash,
+        'fields' => 'ip_str',
+    ]);
+    $res = http_json_get($url);
+    if (!$res['ok']) {
+        return ['ok' => false, 'ips' => [], 'error' => $res['error'] ?: 'shodan favicon search failed'];
+    }
+    $ips = [];
+    foreach (($res['json']['matches'] ?? []) as $match) {
+        $ip = $match['ip_str'] ?? '';
+        if (filter_var($ip, FILTER_VALIDATE_IP)) {
+            $ips[] = $ip;
+        }
+    }
+    return ['ok' => true, 'ips' => array_values(array_unique($ips)), 'error' => null];
+}
+
+/**
+ * Censys: buscar hosts que expongan el mismo favicon MD5 hash.
+ */
+function censys_favicon_search(string $md5Hash, string $id, string $secret): array
+{
+    $id = trim($id);
+    $secret = trim($secret);
+    if ($id === '' || $secret === '') {
+        return ['ok' => false, 'ips' => [], 'error' => 'missing credentials'];
+    }
+
+    $url = 'https://search.censys.io/api/v2/hosts/search?'
+        . http_build_query([
+            'q' => 'services.http.response.favicons.md5_hash: ' . $md5Hash,
+            'per_page' => 50,
+        ]);
+
+    $res = http_json_get($url, [], 12, $id . ':' . $secret);
+    if (!$res['ok']) {
+        return ['ok' => false, 'ips' => [], 'error' => $res['error'] ?: 'censys favicon search failed'];
+    }
+    $hits = $res['json']['result']['hits'] ?? [];
+    $ips = [];
+    foreach ($hits as $hit) {
+        if (!empty($hit['ip']) && filter_var($hit['ip'], FILTER_VALIDATE_IP)) {
+            $ips[] = $hit['ip'];
+        }
+    }
+    return ['ok' => true, 'ips' => array_values(array_unique($ips)), 'error' => null];
+}

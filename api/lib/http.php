@@ -269,3 +269,103 @@ function fetch_titles_via_ips_multi(string $domain, array $ips, callable $onResu
 
     curl_multi_close($multi);
 }
+
+function fetch_favicon_bytes(string $domain, array $resolveIps = [], int $timeout = 6): ?string
+{
+    $resolveIps = ip_filter_safe($resolveIps);
+    $url = 'https://' . $domain . '/favicon.ico';
+    $ch = curl_init($url);
+    $opts = [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_MAXREDIRS => 3,
+        CURLOPT_TIMEOUT => $timeout,
+        CURLOPT_CONNECTTIMEOUT => $timeout,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => 0,
+        CURLOPT_USERAGENT => BACKCF_UA,
+        CURLOPT_MAXFILESIZE => 512 * 1024, // 512 KB cap
+    ];
+    if (!empty($resolveIps)) {
+        $resolve = [];
+        foreach ($resolveIps as $ip) {
+            $isV6 = filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false;
+            $host = $isV6 ? "[$ip]" : $ip;
+            $resolve[] = "$domain:443:$host";
+            $resolve[] = "$domain:80:$host";
+        }
+        $opts[CURLOPT_RESOLVE] = $resolve;
+    }
+    curl_setopt_array($ch, $opts);
+    $body = curl_exec($ch);
+    $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    unset($ch);
+    if ($body !== false && $code === 200 && strlen($body) > 0) {
+        return $body;
+    }
+    return null;
+}
+
+function mul32(int $a, int $b): int
+{
+    $a_low = $a & 0xffff;
+    $a_high = ($a >> 16) & 0xffff;
+    $b_low = $b & 0xffff;
+    $b_high = ($b >> 16) & 0xffff;
+    $r_low = $a_low * $b_low;
+    $r_mid = ($a_low * $b_high) + ($a_high * $b_low);
+    return ($r_low + (($r_mid & 0xffff) << 16)) & 0xffffffff;
+}
+
+function murmurhash3_32(string $key, int $seed = 0): int
+{
+    $len = strlen($key);
+    $h1 = $seed;
+    $c1 = 0xcc9e2d51;
+    $c2 = 0x1b873593;
+    $nblocks = (int)($len / 4);
+    for ($i = 0; $i < $nblocks; $i++) {
+        $k1 = unpack('V', substr($key, $i * 4, 4))[1];
+        $k1 = mul32($k1, $c1);
+        $k1 = (($k1 << 15) | ($k1 >> 17)) & 0xffffffff;
+        $k1 = mul32($k1, $c2);
+        $h1 = $h1 ^ $k1;
+        $h1 = (($h1 << 13) | ($h1 >> 19)) & 0xffffffff;
+        $h1 = (mul32($h1, 5) + 0xe6546b64) & 0xffffffff;
+    }
+    $tail = substr($key, $nblocks * 4);
+    $k1 = 0;
+    switch (strlen($tail)) {
+        case 3:
+            $k1 = $k1 ^ (ord($tail[2]) << 16);
+        case 2:
+            $k1 = $k1 ^ (ord($tail[1]) << 8);
+        case 1:
+            $k1 = $k1 ^ ord($tail[0]);
+            $k1 = mul32($k1, $c1);
+            $k1 = (($k1 << 15) | ($k1 >> 17)) & 0xffffffff;
+            $k1 = mul32($k1, $c2);
+            $h1 = $h1 ^ $k1;
+    }
+    $h1 = $h1 ^ $len;
+    $h1 = $h1 ^ (($h1 >> 16) & 0xffffffff);
+    $h1 = mul32($h1, 0x85ebca6b);
+    $h1 = $h1 ^ (($h1 >> 13) & 0xffffffff);
+    $h1 = mul32($h1, 0xc2b2ae35);
+    $h1 = $h1 ^ (($h1 >> 16) & 0xffffffff);
+    if ($h1 & 0x80000000) {
+        $h1 = -((~$h1 + 1) & 0xffffffff);
+    }
+    return $h1;
+}
+
+function calculate_favicon_hashes(string $bytes): array
+{
+    $md5 = md5($bytes);
+    $b64 = chunk_split(base64_encode($bytes), 76, "\n");
+    $mmh3 = murmurhash3_32($b64);
+    return [
+        'md5' => $md5,
+        'mmh3' => $mmh3,
+    ];
+}
