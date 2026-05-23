@@ -650,6 +650,9 @@ footer {
   flex-wrap: wrap;
   gap: 8px;
 }
+.domain-cell {
+  font-weight: 500;
+}
 
 /* Textarea style */
 #domains_textarea {

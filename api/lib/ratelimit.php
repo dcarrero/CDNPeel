@@ -56,8 +56,25 @@ function rl_check(string $ip, int $limit = RL_DEFAULT_LIMIT, int $window = RL_WI
     $now  = time();
     $hits = [];
 
-    if (is_file($path)) {
-        $data = json_decode((string)@file_get_contents($path), true);
+    // Read-modify-write atómico bajo flock exclusivo. Sin esto, varias
+    // requests concurrentes leen el mismo estado pre-límite y todas se
+    // auto-admiten, dejando el bucket inservible bajo bursts.
+    $fp = @fopen($path, 'c+');
+    if ($fp === false) {
+        // Si no podemos abrir el archivo (permisos, etc.), fallamos cerrado:
+        // mejor rechazar una request legítima que servir un bypass de RL.
+        return ['ok' => false, 'retry_after' => 60, 'count' => 0, 'limit' => $limit];
+    }
+    if (!@flock($fp, LOCK_EX)) {
+        fclose($fp);
+        return ['ok' => false, 'retry_after' => 60, 'count' => 0, 'limit' => $limit];
+    }
+    @chmod($path, 0600);
+
+    rewind($fp);
+    $raw = stream_get_contents($fp);
+    if (is_string($raw) && $raw !== '') {
+        $data = json_decode($raw, true);
         if (is_array($data) && isset($data['hits']) && is_array($data['hits'])) {
             $hits = array_values(array_filter(
                 $data['hits'],
@@ -69,12 +86,24 @@ function rl_check(string $ip, int $limit = RL_DEFAULT_LIMIT, int $window = RL_WI
     if (count($hits) >= $limit) {
         sort($hits);
         $retryAfter = max(1, $hits[0] + $window - $now);
+        // Persistimos el bucket podado para que el GC no recicle el archivo
+        // antes de que expire la ventana.
+        ftruncate($fp, 0);
+        rewind($fp);
+        fwrite($fp, json_encode(['hits' => $hits]));
+        fflush($fp);
+        flock($fp, LOCK_UN);
+        fclose($fp);
         return ['ok' => false, 'retry_after' => $retryAfter, 'count' => count($hits), 'limit' => $limit];
     }
 
     $hits[] = $now;
-    @file_put_contents($path, json_encode(['hits' => $hits]), LOCK_EX);
-    @chmod($path, 0600);
+    ftruncate($fp, 0);
+    rewind($fp);
+    fwrite($fp, json_encode(['hits' => $hits]));
+    fflush($fp);
+    flock($fp, LOCK_UN);
+    fclose($fp);
 
     return ['ok' => true, 'retry_after' => 0, 'count' => count($hits), 'limit' => $limit];
 }

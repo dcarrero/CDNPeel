@@ -83,13 +83,23 @@ if ($domain === '' || !filter_var($domain, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_H
     exit(1);
 }
 
+/**
+ * Quita códigos de control (ANSI/OSC/etc.) de cadenas que vienen de orígenes
+ * no confiables: el dominio puede devolver títulos con secuencias que
+ * spoofeen la tabla de resultados o abusen del terminal del analista.
+ */
+function sanitize_terminal_text(string $s): string
+{
+    return preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '?', $s) ?? '';
+}
+
 // Banner display
 echo C_BOLD . C_CYAN . "=====================================================" . C_RESET . "\n";
-echo C_BOLD . C_YELLOW . "  CDNPeel " . C_RESET . C_GRAY . "- Origin IP Discovery CLI (v1.9.0)\n" . C_RESET;
+echo C_BOLD . C_YELLOW . "  CDNPeel " . C_RESET . C_GRAY . "- Origin IP Discovery CLI (v1.9.1)\n" . C_RESET;
 echo C_BOLD . C_CYAN . "=====================================================" . C_RESET . "\n";
 echo C_BOLD . "Target:  " . C_RESET . C_CYAN . $domain . C_RESET . "\n";
 if ($manualTitle !== '') {
-    echo C_BOLD . "Manual baseline title: " . C_RESET . C_YELLOW . '"' . $manualTitle . '"' . C_RESET . "\n";
+    echo C_BOLD . "Manual baseline title: " . C_RESET . C_YELLOW . '"' . sanitize_terminal_text($manualTitle) . '"' . C_RESET . "\n";
 }
 echo C_BOLD . C_CYAN . "-----------------------------------------------------" . C_RESET . "\n\n";
 
@@ -97,16 +107,20 @@ function log_step(string $prefix, string $msg, string $color = C_BLUE): void {
     echo $color . $prefix . C_RESET . " " . $msg . "\n";
 }
 
-// 1) Resolve A records DoH
-log_step("[*]", "Resolving A records via DoH...");
-$aIpsRaw = dns_get_a($domain);
+// 1) Resolve A + AAAA via DoH (ambas familias filtradas por ip_filter_safe).
+log_step("[*]", "Resolving A/AAAA records via DoH...");
+$aIpsRaw = array_values(array_unique(array_merge(dns_get_a($domain), dns_get_aaaa($domain))));
 $aIps = ip_filter_safe($aIpsRaw);
 $unsafeA = array_values(array_diff($aIpsRaw, $aIps));
-if (!empty($unsafeA) && empty($aIps)) {
-    log_step("[-]", "Domain resolves only to private/reserved IP ranges. SSRF attempt detected. Aborting.", C_RED);
+if (empty($aIps)) {
+    if (!empty($unsafeA)) {
+        log_step("[-]", "Domain resolves only to private/reserved IP ranges. SSRF attempt detected. Aborting.", C_RED);
+    } else {
+        log_step("[-]", "Domain has no A/AAAA records.", C_RED);
+    }
     exit(1);
 }
-log_step("[+]", count($aIps) . " A record(s) resolved" . (empty($unsafeA) ? "" : " (" . count($unsafeA) . " unsafe filtered)"), C_GREEN);
+log_step("[+]", count($aIps) . " A/AAAA record(s) resolved" . (empty($unsafeA) ? "" : " (" . count($unsafeA) . " unsafe filtered)"), C_GREEN);
 
 // 2) Classify CDN
 log_step("[*]", "Checking CDN IP ranges...");
@@ -168,10 +182,12 @@ if (!empty($subdomains)) {
     $resolvedCount = array_sum(array_map('count', $resolved));
     log_step("[+]", count($resolved) . "/" . count($subdomains) . " subdomains resolved, " . $resolvedCount . " IP(s) found", C_GREEN);
 
-    log_step("[*]", "Filtering Cloudflare IPs from subdomains...");
+    log_step("[*]", "Filtering CDN IPs from subdomains (all 13 providers)...");
     foreach ($resolved as $host => $ips) {
         foreach ($ips as $ip) {
-            if (!is_cloudflare_ip($ip)) {
+            // No solo Cloudflare: una IP de borde de Fastly/CloudFront/Akamai
+            // puede devolver el title de la página pública y falsear "origen".
+            if (!is_cdn_ip($ip)) {
                 $subdomainNonCfIps[] = $ip;
                 $subdomainSources[$ip][] = $host;
             }
@@ -276,17 +292,17 @@ if ($manualTitle !== '') {
     if ($baseline['ok'] && !empty($baseline['headers'])) {
         $headerProviders = detect_cdn_from_headers($baseline['headers']);
     }
-    log_step("[+]", "Using manual baseline title: \"$manualTitle\"" . ($baseline['ok'] ? " (HTTP {$baseline['status']})" : " (Fetch failed)"), C_GREEN);
+    log_step("[+]", "Using manual baseline title: \"" . sanitize_terminal_text($manualTitle) . "\"" . ($baseline['ok'] ? " (HTTP {$baseline['status']})" : " (Fetch failed)"), C_GREEN);
     $baselineTitle = $manualTitle;
 } else {
     if (!$baseline['ok']) {
-        log_step("[!]", "Baseline fetch failed: " . ($baseline['error'] ?: 'unknown error'), C_YELLOW);
+        log_step("[!]", "Baseline fetch failed: " . sanitize_terminal_text($baseline['error'] ?: 'unknown error'), C_YELLOW);
         $baselineTitle = null;
     } else {
         if (!empty($baseline['headers'])) {
             $headerProviders = detect_cdn_from_headers($baseline['headers']);
         }
-        log_step("[+]", "Baseline fetched: " . ($baseline['title'] ? "\"{$baseline['title']}\"" : "[No title]") . " (HTTP {$baseline['status']})", C_GREEN);
+        log_step("[+]", "Baseline fetched: " . ($baseline['title'] ? "\"" . sanitize_terminal_text($baseline['title']) . "\"" : "[No title]") . " (HTTP {$baseline['status']})", C_GREEN);
         $baselineTitle = $baseline['title'] ?? null;
     }
 }
@@ -300,7 +316,8 @@ $candidates = [];
 $mark = function (string $ip, string $source, ?string $note = null) use (&$candidates) {
     if (!filter_var($ip, FILTER_VALIDATE_IP)) return;
     if (!ip_is_safe_target($ip)) return;
-    if (is_cloudflare_ip($ip)) return;
+    // Filtramos cualquier CDN reconocido, no solo Cloudflare.
+    if (is_cdn_ip($ip)) return;
     if (!isset($candidates[$ip])) {
         $candidates[$ip] = ['ip' => $ip, 'sources' => [], 'notes' => []];
     }
@@ -361,7 +378,7 @@ if (!empty($candidates)) {
                 'error' => $probe['error'] ?: 'unreachable'
             ];
             // Live validation feedback
-            echo C_RED . "  [-] " . str_pad($ip, 15) . C_RESET . " | Unreachable (" . ($probe['error'] ?: 'timeout') . ")\n";
+            echo C_RED . "  [-] " . str_pad($ip, 15) . C_RESET . " | Unreachable (" . sanitize_terminal_text($probe['error'] ?: 'timeout') . ")\n";
             return;
         }
         
@@ -382,10 +399,11 @@ if (!empty($candidates)) {
         ];
         
         // Live validation feedback
+        $safeTitle = $probe['title'] ? sanitize_terminal_text($probe['title']) : '[No title]';
         if ($match) {
-            echo C_GREEN . C_BOLD . "  [+] " . str_pad($ip, 15) . C_RESET . C_GREEN . " | HTTP " . $probe['status'] . " | MATCH! 🌟 (" . ($probe['title'] ?: '[No title]') . ")\n" . C_RESET;
+            echo C_GREEN . C_BOLD . "  [+] " . str_pad($ip, 15) . C_RESET . C_GREEN . " | HTTP " . $probe['status'] . " | MATCH! 🌟 (" . $safeTitle . ")\n" . C_RESET;
         } else {
-            echo C_YELLOW . "  [!] " . str_pad($ip, 15) . C_RESET . " | HTTP " . $probe['status'] . " | No match (" . ($probe['title'] ?: '[No title]') . ")\n";
+            echo C_YELLOW . "  [!] " . str_pad($ip, 15) . C_RESET . " | HTTP " . $probe['status'] . " | No match (" . $safeTitle . ")\n";
         }
     };
     
@@ -430,7 +448,7 @@ if (empty($results)) {
             $srcs .= " (" . implode(',', $r['notes']) . ")";
         }
         
-        $title = $r['title'] !== null ? $r['title'] : '';
+        $title = $r['title'] !== null ? sanitize_terminal_text($r['title']) : '';
         if (mb_strlen($title) > $titleWidth) {
             $title = mb_substr($title, 0, $titleWidth - 3) . '...';
         }

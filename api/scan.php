@@ -84,9 +84,15 @@ if ($scanId !== '') {
         @unlink($tokenFile);
         fail('Expired scan_id');
     }
-    $ctx = json_decode((string)file_get_contents($tokenFile), true);
-    // One-shot: borramos antes de usarlo para que un reintento no reaproveche.
-    @unlink($tokenFile);
+    // One-shot atómico: renombramos a *.claimed antes de leer. Solo el primer
+    // hilo gana el rename; un reintento concurrente recibe un error genérico
+    // y no puede gastar las API keys del usuario.
+    $claimedFile = $tokenFile . '.claimed.' . bin2hex(random_bytes(4));
+    if (!@rename($tokenFile, $claimedFile)) {
+        fail('Unknown or expired scan_id');
+    }
+    $ctx = json_decode((string)@file_get_contents($claimedFile), true);
+    @unlink($claimedFile);
     if (is_array($ctx)) {
         $shodanKey    = isset($ctx['shodan_key'])    ? trim((string)$ctx['shodan_key'])    : '';
         $censysId     = isset($ctx['censys_id'])     ? trim((string)$ctx['censys_id'])     : '';
@@ -100,18 +106,26 @@ $manualTitle = trim((string)($_GET['manual_title'] ?? ''));
 
 emit('start', 'info', "Scanning $domain", ['domain' => $domain]);
 
-// 1) Registros A
-emit('resolve_a', 'running', 'Resolving A records via DoH');
-$aIpsRaw = dns_get_a($domain);
+// 1) Registros A + AAAA — ambos por DoH. Resolvemos las dos familias y las
+//    pasamos por ip_filter_safe(): si el atacante registra solo AAAA hacia
+//    ::1 o fc00::/7, el guard sigue siendo efectivo.
+emit('resolve_a', 'running', 'Resolving A/AAAA records via DoH');
+$aIpsRaw = array_merge(dns_get_a($domain), dns_get_aaaa($domain));
+$aIpsRaw = array_values(array_unique($aIpsRaw));
 $aIps = ip_filter_safe($aIpsRaw);
 $unsafeA = array_values(array_diff($aIpsRaw, $aIps));
-if (!empty($unsafeA) && empty($aIps)) {
-    // El dominio apunta exclusivamente a rangos privados/loopback/metadata:
-    // un atacante está intentando convertir el servidor en proxy SSRF.
-    fail('Domain resolves only to private/reserved IP ranges — refusing to scan');
+if (empty($aIps)) {
+    // Sin IPs seguras: o el dominio no resuelve, o solo apunta a rangos
+    // privados/loopback/metadata. En ambos casos rechazamos para no convertir
+    // el servidor en proxy SSRF y para no caer al resolver del sistema más
+    // adelante (que ignoraría nuestro CURLOPT_RESOLVE).
+    if (!empty($unsafeA)) {
+        fail('Domain resolves only to private/reserved IP ranges — refusing to scan');
+    }
+    fail('Domain has no A/AAAA records');
 }
 emit('resolve_a', 'done',
-    count($aIps) . ' A record(s)' . (empty($unsafeA) ? '' : ' (' . count($unsafeA) . ' unsafe filtered)'),
+    count($aIps) . ' A/AAAA record(s)' . (empty($unsafeA) ? '' : ' (' . count($unsafeA) . ' unsafe filtered)'),
     ['ips' => $aIps, 'filtered_unsafe' => $unsafeA]
 );
 
@@ -193,10 +207,13 @@ if (!empty($subdomains)) {
         count($resolved) . '/' . count($subdomains) . ' resolved, ' . $resolvedCount . ' total IP(s)',
         ['resolved' => $resolved]);
 
-    emit('classify_subdomains', 'running', 'Filtering non-Cloudflare IPs from subdomains');
+    emit('classify_subdomains', 'running', 'Filtering CDN IPs from subdomains (13 providers)');
     foreach ($resolved as $host => $ips) {
         foreach ($ips as $ip) {
-            if (!is_cloudflare_ip($ip)) {
+            // Excluimos IPs de cualquier CDN reconocido, no solo Cloudflare:
+            // un edge de Fastly/CloudFront/Akamai puede devolver el title de
+            // la página pública y producir un falso positivo de "origen".
+            if (!is_cdn_ip($ip)) {
                 $subdomainNonCfIps[] = $ip;
                 $subdomainSources[$ip][] = $host;
             }

@@ -3,7 +3,7 @@
     "app": {
         "name": "CDNPeel",
         "subtitle_html": "CDN을 벗겨내어 원본 IP를 찾습니다. <a href=\"https://github.com/musana/CF-Hero\" target=\"_blank\" rel=\"noopener\">CF-Hero</a>에서 영감을 받아 여러 CDN으로 확장.",
-        "version": "v1.9.0"
+        "version": "v1.9.1"
     },
     "form": {
         "domain_label": "대상 도메인",
@@ -95,7 +95,7 @@
         "expand_all": "모두 펼치기",
         "collapse_all": "모두 접기"
     },
-    "footer_html": "CDNPeel v1.9.0 — MIT 라이선스. <a href=\"https://colorvivo.com/\" target=\"_blank\" rel=\"noopener\">Color Vivo Internet</a> 및 <a href=\"https://carrero.es\" target=\"_blank\" rel=\"noopener\">David Carrero</a> 제작.",
+    "footer_html": "CDNPeel v1.9.1 — MIT 라이선스. <a href=\"https://colorvivo.com/\" target=\"_blank\" rel=\"noopener\">Color Vivo Internet</a> 및 <a href=\"https://carrero.es\" target=\"_blank\" rel=\"noopener\">David Carrero</a> 제작.",
     "history": {
         "title": "최근 스캔",
         "clear": "기록 지우기",

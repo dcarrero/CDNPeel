@@ -66,6 +66,19 @@ function dns_get_a(string $name): array
     return array_values(array_unique($ips));
 }
 
+function dns_get_aaaa(string $name): array
+{
+    $res = dns_doh_query($name, 'AAAA');
+    if (!$res['ok']) return [];
+    $ips = [];
+    foreach ($res['records'] as $r) {
+        if ((int)$r['type'] === 28 && filter_var($r['data'], FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+            $ips[] = $r['data'];
+        }
+    }
+    return array_values(array_unique($ips));
+}
+
 function dns_get_txt(string $name): array
 {
     $res = dns_doh_query($name, 'TXT');

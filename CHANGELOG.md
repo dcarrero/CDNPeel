@@ -5,6 +5,32 @@ All notable changes to CDNPeel are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.1] - 2026-05-23
+
+Hardening release after a full audit (Claude Code + OpenAI Codex GPT-5.4) of the
+backend, CLI, and frontend.
+
+### Security
+- **SSRF (AAAA path)**: `api/scan.php` and `cli/scan.php` now resolve A *and* AAAA records via DoH and run the combined set through `ip_filter_safe()`. Previously a domain advertising only AAAA records pointing to `::1` / `fc00::/7` could slip past the safety gate.
+- **SSRF (redirect follow)**: `fetch_title_direct()` and `fetch_favicon_bytes()` in `api/lib/http.php` no longer follow HTTP redirects. A 302 to `http://169.254.169.254/` or any internal hostname would otherwise be resolved by the system resolver, bypassing `CURLOPT_RESOLVE`.
+- **Memory DoS**: Both functions now enforce hard per-request byte caps (256 KB for titles, 512 KB for favicons) via `CURLOPT_WRITEFUNCTION`, so chunked responses without `Content-Length` cannot exhaust worker memory.
+- **Rate limit bypass**: `api/lib/ratelimit.php` now wraps the read-modify-write of the bucket file in `flock(LOCK_EX)`. Without this, concurrent bursts from the same IP all admitted themselves.
+- **Result integrity**: The candidate filter for IPs harvested from subdomains and OSINT now uses `is_cdn_ip()` (all 13 providers) instead of `is_cloudflare_ip()`. A Fastly/CloudFront/Akamai edge node could otherwise be reported as the "origin IP".
+- **CSV injection**: `exportCSV()` in `public/app.js` now prefixes cells that start with `=`, `+`, `-`, `@`, tab, or CR with a single quote to neutralise spreadsheet formula execution.
+- **Scan-id replay**: The one-shot token in `api/scan.php` is now claimed atomically via `rename()` instead of `is_file` + `file_get_contents` + `unlink`.
+- **ANSI escape injection in CLI**: `cli/scan.php` now sanitises every untrusted string (manual title, remote `<title>`, error messages) before printing to the terminal.
+
+### Fixed
+- **Stop button race**: Stop now bumps a per-run generation counter; `runSSE()` checks it after the async `init.php` round-trip and refuses to open the `EventSource` if cancelled mid-init.
+- **History rendering**: `renderHistoryUI()` builds rows with `createElement`/`textContent` rather than `innerHTML`, so a poisoned `cdnpeel:scans` value cannot inject UI markup.
+- **Strict CSP follow-up**: Removed an inline `style="font-weight: 500;"` reintroduced by the Phase 4 results-row template; moved to `.domain-cell` in `public/style.css` so the meta CSP `style-src 'self'` (no `unsafe-inline`) is now satisfied throughout.
+
+### Added
+- **Client-side batch validation**: Batch mode now trims/normalises lines, strips schemes and paths, deduplicates, validates hostnames, and caps the queue at 50 domains as defense-in-depth.
+
+### Docs
+- Removed the Roadmap section from `README.md` (all listed items are either shipped or out of scope).
+
 ## [1.9.0] - 2026-05-23
 
 ### Added
@@ -128,6 +154,7 @@ Initial public release.
 - 8-language UI: English, Spanish, French, German, Italian, Portuguese,
   Japanese, Korean.
 
+[1.9.1]: https://github.com/dcarrero/CDNPeel/releases/tag/v1.9.1
 [1.9.0]: https://github.com/dcarrero/CDNPeel/releases/tag/v1.9.0
 [1.8.0]: https://github.com/dcarrero/CDNPeel/releases/tag/v1.8.0
 [1.7.0]: https://github.com/dcarrero/CDNPeel/releases/tag/v1.7.0

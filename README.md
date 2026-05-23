@@ -3,7 +3,7 @@
 > **Peel back the CDN to find the origin IP.**
 > A minimalist, dependency-free web tool that discovers the real origin IP address of websites protected by Cloudflare, Fastly, Akamai, AWS CloudFront, Imperva, Sucuri, BunnyCDN, KeyCDN, CDN77, StackPath, Google Cloud Front-end, Azure Front Door and TransparentEdge.
 
-[![Version](https://img.shields.io/badge/version-1.9.0-orange.svg)](#)
+[![Version](https://img.shields.io/badge/version-1.9.1-orange.svg)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](#license)
 [![PHP](https://img.shields.io/badge/PHP-8.0%2B-blue.svg)](#)
 
@@ -279,15 +279,6 @@ Unauthorized use against third parties may violate local computer crime law. **Y
 - crt.sh is famously unstable. CDNPeel retries once and continues if it fails.
 - Embedded CDN IP ranges drift over time; refresh from the original sources documented in `api/lib/cdn-ranges.php` when needed.
 - Akamai does not publish IP ranges, so detection relies on reverse DNS and response headers as well as a small set of known prefixes.
-
-## Roadmap
-
-- [x] Manual title input (for domains stuck on a CDN challenge interstitial)
-- [ ] SecurityTrails and ZoomEye integrations (same pattern as Shodan/Censys)
-- [x] Batch mode (list of domains)
-- [x] Persistent history (opt-in)
-- [x] Favicon hash search
-- [x] CLI runner
 
 ## Credits
 

@@ -309,7 +309,7 @@
       const tr = document.createElement('tr');
       tr.className = r.verdict;
       tr.innerHTML = `
-        ${hasDomainColumn ? `<td class="domain" style="font-weight: 500;"></td>` : ''}
+        ${hasDomainColumn ? `<td class="domain domain-cell"></td>` : ''}
         <td class="ip"></td>
         <td class="sources"></td>
         <td class="verdict"></td>
@@ -426,10 +426,17 @@
   let currentBatchIndex = 0;
   let batchResults = [];
   let isStoppingBatch = false;
+  // Contador monotónico de "runs": cada Stop lo incrementa. runSSE captura el
+  // valor al arrancar y, tras el await de obtainScanId(), comprueba que sigue
+  // siendo el actual; si no, descarta la creación del EventSource. Sin esto,
+  // pulsar Stop mientras init.php está en vuelo no impide que el EventSource
+  // se abra al resolver el await.
+  let runGeneration = 0;
 
   function stop() {
     if (es) { es.close(); es = null; }
     isStoppingBatch = true;
+    runGeneration++;
     runBtn.disabled = false;
     runBtn.textContent = t('buttons.scan');
     stopBtn.hidden = true;
@@ -457,13 +464,17 @@
   }
 
   async function runSSE(domain, onStep, onDone, onError) {
+    const myGen = runGeneration;
     let scanId = null;
     try {
       scanId = await obtainScanId();
     } catch (err) {
+      if (myGen !== runGeneration) return; // cancelado durante init
       onError(err);
       return;
     }
+    // Si el usuario pulsó Stop mientras esperábamos el token, no abrimos el SSE.
+    if (myGen !== runGeneration) return;
 
     const params = new URLSearchParams({ domain });
     if (scanId) params.set('scan_id', scanId);
@@ -525,6 +536,28 @@
         stop();
       }
     );
+  }
+
+  // Defensa en profundidad: el servidor valida el dominio, pero filtrar
+  // basura en el cliente evita malgastar el rate-limit y mejora el feedback.
+  const BATCH_MAX_DOMAINS = 50;
+  function parseBatchDomains(rawText) {
+    const seen = new Set();
+    const out = [];
+    for (const lineRaw of rawText.split(/\r?\n/)) {
+      if (out.length >= BATCH_MAX_DOMAINS) break;
+      let line = lineRaw.trim().toLowerCase();
+      if (!line) continue;
+      // Acepta URLs completas: quita esquema y path.
+      line = line.replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/:[0-9]+$/, '');
+      if (!line || line.length > 253) continue;
+      // Hostname básico: etiquetas alfanuméricas/hyphen, TLD ≥ 2.
+      if (!/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/.test(line)) continue;
+      if (seen.has(line)) continue;
+      seen.add(line);
+      out.push(line);
+    }
+    return out;
   }
 
   function runBatchScan(domains) {
@@ -615,7 +648,7 @@
       runSingleScan(domain);
     } else {
       const rawText = domainsTextarea.value.trim();
-      const domains = rawText.split('\n').map(d => d.trim()).filter(Boolean);
+      const domains = parseBatchDomains(rawText);
       if (domains.length === 0) return;
       runBatchScan(domains);
     }
@@ -641,9 +674,20 @@
   });
 
   // --- Exporting CSV / JSON ---
+  // Defensa contra CSV injection: un título remoto que empiece por =, +, -, @, \t o \r
+  // se interpretaría como fórmula al abrir el archivo en Excel/LibreOffice.
+  // Antepongo un apóstrofo para neutralizar el parseo de fórmula.
+  function csvCellEscape(val) {
+    let s = String(val);
+    if (s.length > 0 && '=+-@\t\r'.indexOf(s[0]) !== -1) {
+      s = "'" + s;
+    }
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+
   function exportCSV() {
     if (candidatesList.length === 0) return;
-    
+
     const hasDomain = candidatesList.some(r => r.domain);
     const headers = [
       hasDomain ? 'Domain' : null,
@@ -654,9 +698,9 @@
       'Title',
       'Open Ports'
     ].filter(Boolean);
-    
+
     const rows = [headers];
-    
+
     candidatesList.forEach(r => {
       const ports = (r.internetdb && r.internetdb.ports) ? r.internetdb.ports.join(';') : '';
       const row = [
@@ -668,7 +712,7 @@
         r.title || '',
         ports
       ].filter(val => val !== null);
-      rows.push(row.map(val => `"${String(val).replace(/"/g, '""')}"`));
+      rows.push(row.map(csvCellEscape));
     });
     
     const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + rows.map(e => e.join(',')).join('\n');
@@ -838,22 +882,36 @@
     list.forEach(item => {
       const itemEl = document.createElement('div');
       itemEl.className = 'history-item';
-      
-      const cdnText = item.behind_cdn 
-        ? t('history.behind_cdn', { cdn: item.cdn_provider_names.join(', ') })
+
+      // Construido con DOM APIs + textContent: localStorage es manipulable y
+      // los nombres de proveedor CDN entran en una plantilla i18n; usar
+      // innerHTML aquí permitiría spoofing/inyección de UI tras envenenar
+      // la clave cdnpeel:scans.
+      const cdnText = item.behind_cdn
+        ? t('history.behind_cdn', { cdn: (item.cdn_provider_names || []).join(', ') })
         : t('history.not_behind_cdn');
-        
       const badgeClass = item.behind_cdn ? 'cdn-badge' : 'nocdn-badge';
 
-      itemEl.innerHTML = `
-        <div class="domain-group">
-          <span class="domain-name">${escapeHTML(item.domain)}</span>
-          <span class="scan-date">${formatDate(item.date)}</span>
-        </div>
-        <div class="status-group">
-          <span class="${badgeClass}">${cdnText}</span>
-        </div>
-      `;
+      const domainGroup = document.createElement('div');
+      domainGroup.className = 'domain-group';
+      const domainSpan = document.createElement('span');
+      domainSpan.className = 'domain-name';
+      domainSpan.textContent = item.domain || '';
+      const dateSpan = document.createElement('span');
+      dateSpan.className = 'scan-date';
+      dateSpan.textContent = formatDate(item.date);
+      domainGroup.appendChild(domainSpan);
+      domainGroup.appendChild(dateSpan);
+
+      const statusGroup = document.createElement('div');
+      statusGroup.className = 'status-group';
+      const badge = document.createElement('span');
+      badge.className = badgeClass;
+      badge.textContent = cdnText;
+      statusGroup.appendChild(badge);
+
+      itemEl.appendChild(domainGroup);
+      itemEl.appendChild(statusGroup);
 
       itemEl.addEventListener('click', () => {
         $('#domain').value = item.domain;

@@ -51,18 +51,31 @@ function titles_match(?string $a, ?string $b): bool
  * conexión a esas IPs y blindar el baseline frente a DNS rebinding (el resolver
  * del sistema podría dar IPs internas distintas de las que devolvió DoH).
  */
+const BACKCF_TITLE_BODY_CAP = 262144;   // 256 KB es más que suficiente para extraer <title>
+const BACKCF_FAVICON_CAP    = 524288;   // 512 KB de tope duro para el favicon
+
 function fetch_title_direct(string $domain, array $resolveIps = [], int $timeout = 8): array
 {
     // Si recibimos lista de IPs, descartamos cualquier insegura por defensa en profundidad.
+    // Importante: si la lista queda vacía NO seguimos — cURL caería al resolver del
+    // sistema, ignorando nuestras protecciones SSRF (ver api/scan.php, paso resolve_a).
     $resolveIps = ip_filter_safe($resolveIps);
+    if (empty($resolveIps)) {
+        return ['ok' => false, 'error' => 'no safe resolve target', 'status' => 0, 'title' => null, 'headers' => ''];
+    }
 
     $url = 'https://' . $domain . '/';
     $headerBlob = '';
+    $body = '';
     $ch = curl_init($url);
     $opts = [
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_MAXREDIRS => 3,
+        // Sin seguir redirects: un 3xx hacia http://169.254.169.254/ o un host
+        // interno arbitrario sería resuelto por el resolver del sistema (no por
+        // CURLOPT_RESOLVE), abriendo SSRF. Si el baseline no responde sin
+        // redirect, el operador puede usar el campo "Manual baseline title".
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_MAXREDIRS => 0,
         CURLOPT_TIMEOUT => $timeout,
         CURLOPT_CONNECTTIMEOUT => $timeout,
         CURLOPT_SSL_VERIFYPEER => true,
@@ -72,25 +85,35 @@ function fetch_title_direct(string $domain, array $resolveIps = [], int $timeout
             $headerBlob .= $header;
             return strlen($header);
         },
+        // Cap duro de cuerpo: chunked sin Content-Length puede ignorar MAXFILESIZE.
+        // WRITEFUNCTION devolviendo -1 aborta la transferencia inmediatamente.
+        CURLOPT_WRITEFUNCTION => function ($ch, $chunk) use (&$body) {
+            $body .= $chunk;
+            if (strlen($body) >= BACKCF_TITLE_BODY_CAP) return -1;
+            return strlen($chunk);
+        },
     ];
-    if (!empty($resolveIps)) {
-        $resolve = [];
-        foreach ($resolveIps as $ip) {
-            $isV6 = filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false;
-            $host = $isV6 ? "[$ip]" : $ip;
-            $resolve[] = "$domain:443:$host";
-            $resolve[] = "$domain:80:$host";
-        }
-        $opts[CURLOPT_RESOLVE] = $resolve;
+    // Con WRITEFUNCTION en uso, RETURNTRANSFER no acumula nada: leemos $body por referencia.
+    $opts[CURLOPT_RETURNTRANSFER] = false;
+    $resolve = [];
+    foreach ($resolveIps as $ip) {
+        $isV6 = filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false;
+        $host = $isV6 ? "[$ip]" : $ip;
+        $resolve[] = "$domain:443:$host";
+        $resolve[] = "$domain:80:$host";
     }
+    $opts[CURLOPT_RESOLVE] = $resolve;
     curl_setopt_array($ch, $opts);
-    $body = curl_exec($ch);
+    $ok = curl_exec($ch);
     $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
     $errno = curl_errno($ch);
     $err = curl_error($ch);
     unset($ch);
 
-    if ($body === false) {
+    // WRITEFUNCTION devolviendo -1 marca CURLE_WRITE_ERROR (errno=23). Si el cuerpo
+    // recibido ya alcanzó el cap, eso no es un fallo — es un éxito truncado.
+    $truncated = ($errno === CURLE_WRITE_ERROR && strlen($body) >= BACKCF_TITLE_BODY_CAP);
+    if ($ok === false && !$truncated) {
         return ['ok' => false, 'error' => safe_curl_error($errno, $err) ?: 'request failed', 'status' => 0, 'title' => null, 'headers' => ''];
     }
     return [
@@ -272,35 +295,47 @@ function fetch_titles_via_ips_multi(string $domain, array $ips, callable $onResu
 
 function fetch_favicon_bytes(string $domain, array $resolveIps = [], int $timeout = 6): ?string
 {
+    // Misma protección que fetch_title_direct: sin IPs seguras no salimos.
     $resolveIps = ip_filter_safe($resolveIps);
+    if (empty($resolveIps)) return null;
+
     $url = 'https://' . $domain . '/favicon.ico';
+    $body = '';
     $ch = curl_init($url);
     $opts = [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_MAXREDIRS => 3,
+        // Sin seguir redirects para evitar SSRF en el segundo salto.
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_MAXREDIRS => 0,
         CURLOPT_TIMEOUT => $timeout,
         CURLOPT_CONNECTTIMEOUT => $timeout,
         CURLOPT_SSL_VERIFYPEER => false,
         CURLOPT_SSL_VERIFYHOST => 0,
         CURLOPT_USERAGENT => BACKCF_UA,
-        CURLOPT_MAXFILESIZE => 512 * 1024, // 512 KB cap
+        CURLOPT_MAXFILESIZE => BACKCF_FAVICON_CAP,
+        CURLOPT_RETURNTRANSFER => false,
+        // Cap duro por bytes recibidos: protege ante chunked sin Content-Length.
+        CURLOPT_WRITEFUNCTION => function ($ch, $chunk) use (&$body) {
+            $body .= $chunk;
+            if (strlen($body) >= BACKCF_FAVICON_CAP) return -1;
+            return strlen($chunk);
+        },
     ];
-    if (!empty($resolveIps)) {
-        $resolve = [];
-        foreach ($resolveIps as $ip) {
-            $isV6 = filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false;
-            $host = $isV6 ? "[$ip]" : $ip;
-            $resolve[] = "$domain:443:$host";
-            $resolve[] = "$domain:80:$host";
-        }
-        $opts[CURLOPT_RESOLVE] = $resolve;
+    $resolve = [];
+    foreach ($resolveIps as $ip) {
+        $isV6 = filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false;
+        $host = $isV6 ? "[$ip]" : $ip;
+        $resolve[] = "$domain:443:$host";
+        $resolve[] = "$domain:80:$host";
     }
+    $opts[CURLOPT_RESOLVE] = $resolve;
     curl_setopt_array($ch, $opts);
-    $body = curl_exec($ch);
+    $ok = curl_exec($ch);
     $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    $errno = curl_errno($ch);
     unset($ch);
-    if ($body !== false && $code === 200 && strlen($body) > 0) {
+    // Truncado por cap: tratado como respuesta válida.
+    $truncated = ($errno === CURLE_WRITE_ERROR && strlen($body) >= BACKCF_FAVICON_CAP);
+    if (($ok !== false || $truncated) && $code === 200 && strlen($body) > 0) {
         return $body;
     }
     return null;
