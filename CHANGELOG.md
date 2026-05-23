@@ -9,6 +9,11 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
 
 ### Added
 - **CLI Runner**: Added `cli/scan.php` to run scans directly from the console. Supports customizable command line arguments (`-d`, `-s`, `--censys-id`, `--censys-secret`, `--otx`, `-h`, `-m`). Displays real-time progress indicators using colored ANSI codes and prints findings in an auto-aligning ASCII table.
+- **Premium UI Aesthetics**: Upgraded dashboard cards with Glassmorphic backdrops, glowing active shadows, neon breathing pulses on running steps, and emerald green highlights for validated origin IPs.
+- **Micro-Animations**: Introduced slide-in and fade-in animations for results table rows to make live discoveries appear organically.
+
+### Security
+- **Strict CSP Compliance**: Removed inline style attributes from the batch mode textarea in `public/index.html` and migrated styling to the stylesheet, adhering fully to the strict `style-src 'self'` directive.
 
 ## [1.8.0] - 2026-05-23
 
