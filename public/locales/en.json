@@ -8,6 +8,8 @@
     "form": {
         "domain_label": "Target domain",
         "domain_placeholder": "example.com",
+        "manual_title_label": "Manual Baseline Title (Optional)",
+        "manual_title_placeholder": "e.g. My Website Home",
         "free_sources_title": "Free additional sources (optional)",
         "hackertarget_label": "HackerTarget hostsearch",
         "hackertarget_hint": "(free, no key, 50/day rate limit per server IP)",

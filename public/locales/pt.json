@@ -18,7 +18,9 @@
         "shodan_label": "Chave API Shodan",
         "censys_id_label": "Censys API ID",
         "censys_secret_label": "Censys API secret",
-        "keys_note": "As chaves são guardadas apenas no seu navegador (sessionStorage) e enviadas ao servidor unicamente durante a varredura."
+        "keys_note": "As chaves são guardadas apenas no seu navegador (sessionStorage) e enviadas ao servidor unicamente durante a varredura.",
+        "manual_title_label": "Título Baseline Manual (Opcional)",
+        "manual_title_placeholder": "ex. Meu Site Home"
     },
     "buttons": {
         "scan": "Analisar",

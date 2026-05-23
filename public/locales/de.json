@@ -18,7 +18,9 @@
         "shodan_label": "Shodan API-Schlüssel",
         "censys_id_label": "Censys API ID",
         "censys_secret_label": "Censys API secret",
-        "keys_note": "Schlüssel werden nur im Browser gespeichert (sessionStorage) und ausschließlich während des Scans an den Server gesendet."
+        "keys_note": "Schlüssel werden nur im Browser gespeichert (sessionStorage) und ausschließlich während des Scans an den Server gesendet.",
+        "manual_title_label": "Manuell Baseline-Titel (Optional)",
+        "manual_title_placeholder": "z.B. Meine Webseite Startseite"
     },
     "buttons": {
         "scan": "Scannen",

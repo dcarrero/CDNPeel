@@ -18,7 +18,9 @@
         "shodan_label": "Clé API Shodan",
         "censys_id_label": "Censys API ID",
         "censys_secret_label": "Censys API secret",
-        "keys_note": "Les clés sont stockées uniquement dans votre navigateur (sessionStorage) et envoyées au serveur seulement pendant l'analyse."
+        "keys_note": "Les clés sont stockées uniquement dans votre navigateur (sessionStorage) et envoyées au serveur seulement pendant l'analyse.",
+        "manual_title_label": "Titre de référence manuel (facultatif)",
+        "manual_title_placeholder": "ex. Mon site Accueil"
     },
     "buttons": {
         "scan": "Analyser",

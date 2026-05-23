@@ -258,7 +258,7 @@ Unauthorized use against third parties may violate local computer crime law. **Y
 
 ## Roadmap
 
-- [ ] Manual title input (for domains stuck on a CDN challenge interstitial)
+- [x] Manual title input (for domains stuck on a CDN challenge interstitial)
 - [ ] SecurityTrails and ZoomEye integrations (same pattern as Shodan/Censys)
 - [ ] Batch mode (list of domains)
 - [ ] Persistent history (opt-in)

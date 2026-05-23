@@ -18,7 +18,9 @@
         "shodan_label": "Shodan API 키",
         "censys_id_label": "Censys API ID",
         "censys_secret_label": "Censys API secret",
-        "keys_note": "키는 브라우저(sessionStorage)에만 저장되며 스캔 중에만 서버로 전송됩니다."
+        "keys_note": "키는 브라우저(sessionStorage)에만 저장되며 스캔 중에만 서버로 전송됩니다.",
+        "manual_title_label": "수동 기준 제목 (선택 사항)",
+        "manual_title_placeholder": "예: 내 웹사이트 홈"
     },
     "buttons": {
         "scan": "스캔",

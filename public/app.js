@@ -435,6 +435,8 @@
     for (const id of CHECKBOXES) {
       if (document.getElementById(id).checked) params.set(id, '1');
     }
+    const manualTitle = $('#manual_title').value.trim();
+    if (manualTitle) params.set('manual_title', manualTitle);
 
     es = new EventSource('../api/scan.php?' + params.toString());
     es.addEventListener('step', (ev) => {

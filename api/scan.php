@@ -96,6 +96,7 @@ if ($scanId !== '') {
 }
 
 $useHackerTarget = ($_GET['use_hackertarget'] ?? '') === '1';
+$manualTitle = trim((string)($_GET['manual_title'] ?? ''));
 
 emit('start', 'info', "Scanning $domain", ['domain' => $domain]);
 
@@ -254,23 +255,36 @@ if ($censysId !== '' && $censysSecret !== '') {
 // 6) Baseline title (a través del CDN si aplica) + detección por headers.
 //     Forzamos CURLOPT_RESOLVE a las IPs A ya validadas para evitar DNS rebinding
 //     (resolver del sistema podría devolver IPs internas distintas a las de DoH).
-emit('fetch_baseline', 'running', "Fetching baseline title for $domain");
+emit('fetch_baseline', 'running', "Fetching baseline title for $domain" . ($manualTitle !== '' ? ' (Manual override provided)' : ''));
 $baseline = fetch_title_direct($domain, $aIps);
 $headerProviders = [];
-if (!$baseline['ok']) {
-    emit('fetch_baseline', 'error', $baseline['error'] ?: 'baseline failed');
-} else {
-    if (!empty($baseline['headers'])) {
+if ($manualTitle !== '') {
+    if ($baseline['ok'] && !empty($baseline['headers'])) {
         $headerProviders = detect_cdn_from_headers($baseline['headers']);
     }
-    emit('fetch_baseline', 'done', 'HTTP ' . $baseline['status'], [
-        'title' => $baseline['title'],
-        'status' => $baseline['status'],
+    emit('fetch_baseline', 'done', 'Using manual baseline title: "' . $manualTitle . '"' . ($baseline['ok'] ? ' (HTTP ' . $baseline['status'] . ')' : ' (Fetch failed)'), [
+        'title' => $manualTitle,
+        'status' => $baseline['status'] ?? 0,
         'header_providers' => $headerProviders,
         'header_provider_names' => array_map('cdn_provider_name', $headerProviders),
     ]);
+    $baselineTitle = $manualTitle;
+} else {
+    if (!$baseline['ok']) {
+        emit('fetch_baseline', 'error', $baseline['error'] ?: 'baseline failed');
+    } else {
+        if (!empty($baseline['headers'])) {
+            $headerProviders = detect_cdn_from_headers($baseline['headers']);
+        }
+        emit('fetch_baseline', 'done', 'HTTP ' . $baseline['status'] . ($baseline['title'] ? ' — ' . $baseline['title'] : ''), [
+            'title' => $baseline['title'],
+            'status' => $baseline['status'],
+            'header_providers' => $headerProviders,
+            'header_provider_names' => array_map('cdn_provider_name', $headerProviders),
+        ]);
+    }
+    $baselineTitle = $baseline['title'] ?? null;
 }
-$baselineTitle = $baseline['title'] ?? null;
 
 // Fusionar CDNs detectados por IP y por headers
 $detectedProviders = array_values(array_unique(array_merge($detectedProviders, $headerProviders)));
