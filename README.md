@@ -261,7 +261,7 @@ Unauthorized use against third parties may violate local computer crime law. **Y
 - [x] Manual title input (for domains stuck on a CDN challenge interstitial)
 - [ ] SecurityTrails and ZoomEye integrations (same pattern as Shodan/Censys)
 - [ ] Batch mode (list of domains)
-- [ ] Persistent history (opt-in)
+- [x] Persistent history (opt-in)
 - [x] Favicon hash search
 - [ ] CLI runner
 

@@ -54,7 +54,8 @@
         "validate_prefix": "検証 ",
         "fatal": "致命的なエラー",
         "connection": "接続",
-        "connection_lost": "SSE接続が失われました"
+        "connection_lost": "SSE接続が失われました",
+        "history_load": "履歴から読み込み済み"
     },
     "results": {
         "title": "結果",
@@ -87,5 +88,12 @@
         "expand_all": "すべて開く",
         "collapse_all": "すべて折りたたむ"
     },
-    "footer_html": "CDNPeel v1.7.0 — MITライセンス。<a href=\"https://colorvivo.com/\" target=\"_blank\" rel=\"noopener\">Color Vivo Internet</a> と <a href=\"https://carrero.es\" target=\"_blank\" rel=\"noopener\">David Carrero</a> による。"
+    "footer_html": "CDNPeel v1.7.0 — MITライセンス。<a href=\"https://colorvivo.com/\" target=\"_blank\" rel=\"noopener\">Color Vivo Internet</a> と <a href=\"https://carrero.es\" target=\"_blank\" rel=\"noopener\">David Carrero</a> による。",
+    "history": {
+        "title": "最近のスキャン",
+        "clear": "履歴をクリア",
+        "empty": "最近のスキャン履歴はありません",
+        "behind_cdn": "{cdn}の背後",
+        "not_behind_cdn": "CDNなし"
+    }
 }

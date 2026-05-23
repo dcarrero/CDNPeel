@@ -89,6 +89,17 @@
         <p class="hint" data-i18n="form.keys_note"></p>
       </details>
 
+      <details class="extras" id="history-details" open>
+        <summary>
+          <span data-i18n="history.title">Recent Scans</span>
+          <span id="history-counter" class="pipeline-counter">0</span>
+        </summary>
+        <div id="history-list" class="history-list"></div>
+        <div class="row" style="margin-top: 12px; display: flex; gap: 8px;">
+          <button id="clear-history" type="button" class="ghost-btn" data-i18n="history.clear" style="padding: 4px 10px; font-size: 12px;">Clear history</button>
+        </div>
+      </details>
+
       <div class="row">
         <button id="run" type="submit" data-i18n="buttons.scan">Scan</button>
         <button id="stop" type="button" hidden data-i18n="buttons.stop">Stop</button>

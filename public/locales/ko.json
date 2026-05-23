@@ -54,7 +54,8 @@
         "validate_prefix": "검증 ",
         "fatal": "치명적 오류",
         "connection": "연결",
-        "connection_lost": "SSE 연결 끊김"
+        "connection_lost": "SSE 연결 끊김",
+        "history_load": "기록에서 불러옴"
     },
     "results": {
         "title": "결과",
@@ -87,5 +88,12 @@
         "expand_all": "모두 펼치기",
         "collapse_all": "모두 접기"
     },
-    "footer_html": "CDNPeel v1.7.0 — MIT 라이선스. <a href=\"https://colorvivo.com/\" target=\"_blank\" rel=\"noopener\">Color Vivo Internet</a> 및 <a href=\"https://carrero.es\" target=\"_blank\" rel=\"noopener\">David Carrero</a> 제작."
+    "footer_html": "CDNPeel v1.7.0 — MIT 라이선스. <a href=\"https://colorvivo.com/\" target=\"_blank\" rel=\"noopener\">Color Vivo Internet</a> 및 <a href=\"https://carrero.es\" target=\"_blank\" rel=\"noopener\">David Carrero</a> 제작.",
+    "history": {
+        "title": "최근 스캔",
+        "clear": "기록 지우기",
+        "empty": "최근 스캔 기록이 없습니다",
+        "behind_cdn": "{cdn} 뒤에 있음",
+        "not_behind_cdn": "CDN 없음"
+    }
 }

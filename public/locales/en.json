@@ -54,7 +54,8 @@
         "validate_prefix": "Validate ",
         "fatal": "Fatal error",
         "connection": "Connection",
-        "connection_lost": "SSE connection lost"
+        "connection_lost": "SSE connection lost",
+        "history_load": "Loaded from history"
     },
     "results": {
         "title": "Results",
@@ -86,6 +87,13 @@
         "pipeline_header": "Pipeline",
         "expand_all": "Expand all",
         "collapse_all": "Collapse all"
+    },
+    "history": {
+        "title": "Recent Scans",
+        "clear": "Clear history",
+        "empty": "No recent scans yet",
+        "behind_cdn": "behind {cdn}",
+        "not_behind_cdn": "no CDN"
     },
     "footer_html": "CDNPeel v1.7.0 — MIT licence. By <a href=\"https://colorvivo.com/\" target=\"_blank\" rel=\"noopener\">Color Vivo Internet</a> &amp; <a href=\"https://carrero.es\" target=\"_blank\" rel=\"noopener\">David Carrero</a>."
 }

@@ -17,6 +17,9 @@
   const toTopBtn = $('#to-top');
   const expandAllBtn = $('#expand-all');
   const collapseAllBtn = $('#collapse-all');
+  const historyList = $('#history-list');
+  const historyCounter = $('#history-counter');
+  const clearHistoryBtn = $('#clear-history');
 
   // Estados que indican que el paso "ya pasó" y por tanto se puede plegar.
   const SETTLED_STATUSES = new Set(['done', 'match', 'no-match', 'skipped', 'info']);
@@ -77,6 +80,7 @@
     for (const el of document.querySelectorAll('[data-i18n-placeholder]')) {
       el.placeholder = t(el.getAttribute('data-i18n-placeholder'));
     }
+    renderHistoryUI();
   }
 
   langPicker.addEventListener('change', () => loadLocale(langPicker.value));
@@ -448,6 +452,7 @@
         renderStep(payload);
         if (payload.id === 'summary' && payload.status === 'done') {
           renderSummary(payload.data);
+          saveToHistory(payload.data);
           stop();
         }
         if (payload.id === 'fatal') {
@@ -557,6 +562,127 @@
       d.open = false;
       d.dataset.userToggled = 'true';
     });
+  });
+
+  // --- History Management (localStorage) ---
+  const MAX_HISTORY = 10;
+
+  function loadHistory() {
+    try {
+      const raw = localStorage.getItem('cdnpeel:scans');
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveHistory(list) {
+    try {
+      localStorage.setItem('cdnpeel:scans', JSON.stringify(list));
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  function saveToHistory(scanData) {
+    const list = loadHistory();
+    // Remove if duplicate domain
+    const filtered = list.filter(item => item.domain !== scanData.domain);
+    // Add to front
+    filtered.unshift({
+      domain: scanData.domain,
+      date: new Date().toISOString(),
+      behind_cdn: scanData.behind_cdn,
+      cdn_provider_names: scanData.cdn_provider_names,
+      baseline_title: scanData.baseline_title,
+      results: scanData.results
+    });
+    // Cap at max length
+    if (filtered.length > MAX_HISTORY) {
+      filtered.pop();
+    }
+    saveHistory(filtered);
+    renderHistoryUI();
+  }
+
+  function escapeHTML(str) {
+    if (!str) return '';
+    return str.replace(/[&<>'"]/g, 
+      tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+    );
+  }
+
+  function formatDate(isoString) {
+    try {
+      const date = new Date(isoString);
+      return date.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
+    } catch (e) {
+      return isoString;
+    }
+  }
+
+  function renderHistoryUI() {
+    const list = loadHistory();
+    historyCounter.textContent = String(list.length);
+    historyList.innerHTML = '';
+
+    if (list.length === 0) {
+      const emptyDiv = document.createElement('div');
+      emptyDiv.className = 'history-empty';
+      emptyDiv.setAttribute('data-i18n', 'history.empty');
+      emptyDiv.textContent = t('history.empty');
+      historyList.appendChild(emptyDiv);
+      return;
+    }
+
+    list.forEach(item => {
+      const itemEl = document.createElement('div');
+      itemEl.className = 'history-item';
+      
+      const cdnText = item.behind_cdn 
+        ? t('history.behind_cdn', { cdn: item.cdn_provider_names.join(', ') })
+        : t('history.not_behind_cdn');
+        
+      const badgeClass = item.behind_cdn ? 'cdn-badge' : 'nocdn-badge';
+
+      itemEl.innerHTML = `
+        <div class="domain-group">
+          <span class="domain-name">${escapeHTML(item.domain)}</span>
+          <span class="scan-date">${formatDate(item.date)}</span>
+        </div>
+        <div class="status-group">
+          <span class="${badgeClass}">${cdnText}</span>
+        </div>
+      `;
+
+      itemEl.addEventListener('click', () => {
+        $('#domain').value = item.domain;
+        if (item.baseline_title) {
+          $('#manual_title').value = item.baseline_title;
+        } else {
+          $('#manual_title').value = '';
+        }
+        
+        reset();
+        
+        const el = getStepEl('history_load');
+        el.className = 'step info';
+        el.querySelector('.status').textContent = 'info';
+        el.querySelector('.title').textContent = t('steps.history_load');
+        el.querySelector('.msg').textContent = `Loaded cached scan for ${item.domain}`;
+        el.open = false;
+        updateCounter();
+        
+        renderSummary(item);
+      });
+
+      historyList.appendChild(itemEl);
+    });
+  }
+
+  clearHistoryBtn.addEventListener('click', () => {
+    saveHistory([]);
+    renderHistoryUI();
   });
 
   // --- bootstrap ---

@@ -54,7 +54,8 @@
         "validate_prefix": "Valider ",
         "fatal": "Erreur fatale",
         "connection": "Connexion",
-        "connection_lost": "Connexion SSE perdue"
+        "connection_lost": "Connexion SSE perdue",
+        "history_load": "Chargé depuis l historique"
     },
     "results": {
         "title": "Résultats",
@@ -87,5 +88,12 @@
         "expand_all": "Tout déplier",
         "collapse_all": "Tout replier"
     },
-    "footer_html": "CDNPeel v1.7.0 — licence MIT. Par <a href=\"https://colorvivo.com/\" target=\"_blank\" rel=\"noopener\">Color Vivo Internet</a> et <a href=\"https://carrero.es\" target=\"_blank\" rel=\"noopener\">David Carrero</a>."
+    "footer_html": "CDNPeel v1.7.0 — licence MIT. Par <a href=\"https://colorvivo.com/\" target=\"_blank\" rel=\"noopener\">Color Vivo Internet</a> et <a href=\"https://carrero.es\" target=\"_blank\" rel=\"noopener\">David Carrero</a>.",
+    "history": {
+        "title": "Analyses récentes",
+        "clear": "Effacer l historique",
+        "empty": "Aucune analyse récente",
+        "behind_cdn": "derrière {cdn}",
+        "not_behind_cdn": "pas de CDN"
+    }
 }

@@ -11,6 +11,8 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
 - **Manual Baseline Title (Optional)**: Allows the user to specify a baseline title to bypass strict CDN protection/challenges (like captchas or interstitial pages) that block direct baseline fetches.
 - **Favicon Hash Search (Shodan / Censys)**: Downloads the target favicon and calculates both MurmurHash3 (used by Shodan) and MD5 (used by Censys) in pure PHP. It queries Shodan and Censys APIs using these hashes to find hidden origin servers.
 - **Favicon tagging in results**: Candidates discovered via favicon hash are labeled with the `favicon` note in the results table.
+- **Persistent Scan History**: Stores up to 10 recent scans locally (completely client-side & private using `localStorage`). Clicking on any past scan instantly loads the cached results without consuming Shodan/Censys API limits. Added a button to clear history.
+- **Localisation for history**: Translated history strings across all 8 supported languages.
 
 ## [1.6.0] - 2026-05-22
 
