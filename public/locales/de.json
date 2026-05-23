@@ -3,7 +3,7 @@
     "app": {
         "name": "CDNPeel",
         "subtitle_html": "CDN abschälen, um die Ursprungs-IP zu finden. Inspiriert von <a href=\"https://github.com/musana/CF-Hero\" target=\"_blank\" rel=\"noopener\">CF-Hero</a>, erweitert auf mehrere CDNs.",
-        "version": "v1.8.0"
+        "version": "v1.9.0"
     },
     "form": {
         "domain_label": "Zieldomain",
@@ -95,7 +95,7 @@
         "expand_all": "Alle ausklappen",
         "collapse_all": "Alle einklappen"
     },
-    "footer_html": "CDNPeel v1.8.0 — MIT-Lizenz. Von <a href=\"https://colorvivo.com/\" target=\"_blank\" rel=\"noopener\">Color Vivo Internet</a> und <a href=\"https://carrero.es\" target=\"_blank\" rel=\"noopener\">David Carrero</a>.",
+    "footer_html": "CDNPeel v1.9.0 — MIT-Lizenz. Von <a href=\"https://colorvivo.com/\" target=\"_blank\" rel=\"noopener\">Color Vivo Internet</a> und <a href=\"https://carrero.es\" target=\"_blank\" rel=\"noopener\">David Carrero</a>.",
     "history": {
         "title": "Letzte Scans",
         "clear": "Verlauf löschen",

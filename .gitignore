@@ -34,3 +34,9 @@ dist/
 
 # Local CDN range overrides (if added in the future)
 /api/data/*.json
+
+# Agent planning files (local only)
+/implementation_plan.md
+/walkthrough.md
+/task.md
+

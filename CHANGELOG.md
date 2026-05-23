@@ -5,6 +5,11 @@ All notable changes to CDNPeel are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0] - 2026-05-23
+
+### Added
+- **CLI Runner**: Added `cli/scan.php` to run scans directly from the console. Supports customizable command line arguments (`-d`, `-s`, `--censys-id`, `--censys-secret`, `--otx`, `-h`, `-m`). Displays real-time progress indicators using colored ANSI codes and prints findings in an auto-aligning ASCII table.
+
 ## [1.8.0] - 2026-05-23
 
 ### Added
@@ -118,6 +123,7 @@ Initial public release.
 - 8-language UI: English, Spanish, French, German, Italian, Portuguese,
   Japanese, Korean.
 
+[1.9.0]: https://github.com/dcarrero/CDNPeel/releases/tag/v1.9.0
 [1.8.0]: https://github.com/dcarrero/CDNPeel/releases/tag/v1.8.0
 [1.7.0]: https://github.com/dcarrero/CDNPeel/releases/tag/v1.7.0
 [1.6.0]: https://github.com/dcarrero/CDNPeel/releases/tag/v1.6.0

@@ -3,7 +3,7 @@
 > **Peel back the CDN to find the origin IP.**
 > A minimalist, dependency-free web tool that discovers the real origin IP address of websites protected by Cloudflare, Fastly, Akamai, AWS CloudFront, Imperva, Sucuri, BunnyCDN, KeyCDN, CDN77, StackPath, Google Cloud Front-end, Azure Front Door and TransparentEdge.
 
-[![Version](https://img.shields.io/badge/version-1.8.0-orange.svg)](#)
+[![Version](https://img.shields.io/badge/version-1.9.0-orange.svg)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](#license)
 [![PHP](https://img.shields.io/badge/PHP-8.0%2B-blue.svg)](#)
 
@@ -239,6 +239,30 @@ bucket. Override the default by editing `RL_DEFAULT_LIMIT` in
 A minimal audit trail (`scan_start` and `rate_limited` events, with IP and
 domain — no keys) is written to `error_log` for compliance with OWASP A09.
 
+## CLI Runner
+
+CDNPeel includes a command-line script to perform scans directly from the terminal or automate audits. It imports the project libraries and prints progress status with real-time indicators and a summary table with colored results.
+
+### Usage
+```bash
+php cli/scan.php -d <domain> [options]
+```
+
+### Options
+- `-d, --domain <domain>`: Target domain to scan (Required).
+- `-s, --shodan <key>`: Shodan API key for DNS and favicon searches.
+- `--censys-id <id>`: Censys API ID.
+- `--censys-secret <secret>`: Censys API Secret.
+- `--otx <key>`: AlienVault OTX API key.
+- `-h, --use-hackertarget`: Enable HackerTarget subdomain search.
+- `-m, --manual-title <title>`: Specify manual web page baseline title.
+- `--help`: Show the help menu.
+
+### Example
+```bash
+php cli/scan.php -d target.com -h -s YOUR_SHODAN_KEY -m "Welcome to target"
+```
+
 ## Security and legal
 
 Use **only** on domains you own or with explicit written authorization. CDNPeel is intended for:
@@ -263,7 +287,7 @@ Unauthorized use against third parties may violate local computer crime law. **Y
 - [x] Batch mode (list of domains)
 - [x] Persistent history (opt-in)
 - [x] Favicon hash search
-- [ ] CLI runner
+- [x] CLI runner
 
 ## Credits
 
